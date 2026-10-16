@@ -1,0 +1,24 @@
+flowchart TD
+    START([Start]) --> LOGIN[Login]
+    LOGIN --> VALID{Valid Login?}
+    VALID -->|No| LOGIN
+    VALID -->|Yes| CONFIG[Configure Simulation]
+    CONFIG --> STRATEGY[Select Strategy<br/>smart / baseline]
+    STRATEGY --> SEED[Enter Seed]
+    SEED --> RUN[Run Simulation<br/>POST /api/run]
+    RUN --> INIT[Initialize Orchestrator]
+    INIT --> LOAD[Load Incident Dataset<br/>input_data.json / custom_incidents]
+    LOAD --> DETECT[Incident Detection]
+    DETECT --> ML{Smart strategy<br/>and ML model available?}
+    ML -->|Yes| PREDICT[Severity Prediction<br/>Random Forest]
+    ML -->|No| RULES[Rule-based Priority]
+    PREDICT --> ALLOC[Resource Allocation]
+    RULES --> ALLOC
+    ALLOC --> RESCUE[Rescue Coordination]
+    RESCUE --> EVAL[Evaluation]
+    EVAL --> METRICS[Save Metrics<br/>save_run_metrics]
+    METRICS --> UPDATEDB[Update Database<br/>incidents · agent_logs · run_logs]
+    UPDATEDB --> COMPLETE[complete_run]
+    COMPLETE --> REPORTS[Generate Reports<br/>CSV / PDF]
+    REPORTS --> DISPLAY[Display Dashboard<br/>Analytics · Live Map]
+    DISPLAY --> END([End])

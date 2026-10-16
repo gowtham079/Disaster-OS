@@ -1,0 +1,393 @@
+\chapter{Implementation}
+\label{ch:implementation}
+
+This chapter walks through the implementation of every module in the project. Code snippets are drawn directly from the source files, and explanations focus on design choices, data structures, and control flow rather than line-by-line narration.
+
+\section{Frontend (React)}
+\label{sec:impl_frontend}
+
+The frontend is a single-page React application bootstrapped with \texttt{create-react-app}. The entire UI is contained in \texttt{App.jsx} (approximately 1300 lines) and one component file, \texttt{LiveMap.jsx}.
+
+\subsection{Application Structure}
+
+\texttt{App.jsx} manages the application state using React hooks. Key state variables include:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{user}: The currently logged-in user object, persisted via \texttt{localStorage}.
+    \item \texttt{runId}: The UUID of the latest simulation run.
+    \item \texttt{history}: State transition history fetched from \texttt{GET /api/run/\{id\}/history}.
+    \item \texttt{incidents}: Incident data from \texttt{GET /api/run/\{id\}/incidents}.
+    \item \texttt{analytics}: Summary statistics from \texttt{GET /api/analytics/summary}.
+    \item \texttt{wsMessages}: An array of real-time WebSocket messages.
+\end{itemize}
+
+The dashboard renders in tabbed sections: Simulation Control, Analytics, Live Map, Reports, Admin Panel, and ML Management. Navigation between tabs uses a simple state variable rather than a router, since there is no deep linking requirement.
+
+\subsection{WebSocket Integration}
+
+On mount, the application opens a WebSocket connection to \texttt{ws://localhost:8000/ws/simulation}. Incoming messages are parsed and appended to a message log. State transition messages of type \texttt{STATE\_TRANSITION} update the UI to show which pipeline stage is active. Agent message events of type \texttt{AGENT\_MESSAGE} are displayed in a real-time message feed.
+
+\subsection{SVG Charts}
+
+The dashboard includes two custom SVG chart components. \texttt{SVGLineChart} plots lives saved across recent runs as a gradient-filled line chart with data point labels. \texttt{SVGBarChart} compares strategy efficiencies as colored vertical bars. Both charts compute their own scales, gridlines, and axis labels without any charting library---they generate raw SVG elements using coordinate math.
+
+\subsection{Styling}
+
+The \texttt{index.css} file defines a dark theme using CSS custom properties:
+
+\begin{lstlisting}[style=codestyle, language=CSS, caption=CSS custom properties for dark theme]
+:root {
+  --bg-primary: #0b0819;
+  --bg-secondary: #13102a;
+  --bg-card: #1a1535;
+  --accent-purple: #7c3aed;
+  --accent-pink: #db2777;
+  --accent-cyan: #06b6d4;
+  --text-primary: #f0eef6;
+  --text-muted: #8b87a0;
+  --border-purple: rgba(124, 58, 237, 0.15);
+}
+\end{lstlisting}
+
+Cards, buttons, and panels use these variables for consistent theming. Hover effects, transitions, and glow shadows are applied through CSS without JavaScript animation libraries.
+
+[Insert Dashboard Screenshot]
+
+\section{Backend (FastAPI)}
+\label{sec:impl_backend}
+
+The FastAPI application is defined in \texttt{app.py}. It initializes with a startup event that calls \texttt{init\_db()} to ensure the database schema exists.
+
+\subsection{Application Initialization}
+
+\begin{lstlisting}[style=codestyle, language=Python, caption=FastAPI application setup]
+app = FastAPI(title="Multi-Agent Disaster Management API",
+              version="2.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                   allow_methods=["*"], allow_headers=["*"])
+
+@app.on_event("startup")
+def startup_event():
+    global main_loop
+    main_loop = asyncio.get_event_loop()
+    init_db()
+\end{lstlisting}
+
+The \texttt{main\_loop} global variable captures the event loop reference at startup. This reference is used by \texttt{broadcast\_sync()}, which is called from synchronous agent code running in background threads. It uses \texttt{asyncio.run\_coroutine\_threadsafe()} to schedule WebSocket broadcasts on the main event loop.
+
+\subsection{Simulation Trigger}
+
+The \texttt{POST /api/run} endpoint creates an \texttt{Orchestrator} and submits its \texttt{run()} method to FastAPI's \texttt{BackgroundTasks}:
+
+\begin{lstlisting}[style=codestyle, language=Python, caption=Simulation trigger endpoint]
+@app.post("/api/run")
+def trigger_run(request: RunRequest,
+                background_tasks: BackgroundTasks):
+    orchestrator = Orchestrator(
+        seed=request.seed, strategy=request.strategy,
+        user_id=request.user_id)
+    run_id = orchestrator.run_id
+    background_tasks.add_task(orchestrator.run)
+    return {"message": "Run started", "run_id": run_id,
+            "strategy": request.strategy}
+\end{lstlisting}
+
+This pattern allows the HTTP response to return immediately while the simulation runs asynchronously, broadcasting progress via WebSocket.
+
+\section{Authentication}
+\label{sec:impl_auth}
+
+Login is handled by \texttt{POST /api/auth/login}, which queries the \texttt{users} table by email and compares the supplied password. Registration is handled by \texttt{POST /api/auth/register}, which calls \texttt{create\_user\_in\_db()} to insert a new user row. Both endpoints return a status field and user details on success.
+
+The frontend stores the logged-in user in \texttt{localStorage} and conditionally renders the admin panel tab only when the user's role is ``admin.''
+
+\section{FastAPI API Endpoints}
+\label{sec:impl_api}
+
+Beyond simulation and auth, the API layer includes:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Analytics}: \texttt{GET /api/analytics/summary} joins \texttt{simulation\_runs} and \texttt{run\_metrics} to compute totals, strategy breakdowns, and top runs.
+    \item \textbf{Suggestions}: \texttt{GET /api/suggestions} analyzes historical runs to recommend the best seed, strategy, and team allocation adjustments.
+    \item \textbf{Teams}: \texttt{GET /api/teams} lists rescue teams; \texttt{POST /api/teams} creates or updates a team using upsert logic.
+    \item \textbf{Custom Incidents}: \texttt{POST /api/incidents/custom} saves a user-defined incident; \texttt{GET /api/incidents/custom} lists them; \texttt{POST /api/incidents/custom/clear} deletes all.
+    \item \textbf{Geo Data}: \texttt{GET /api/incidents/geo/\{run\_id\}} returns incidents with coordinates and routing data for map rendering.
+    \item \textbf{Health}: \texttt{GET /api/health} returns a simple OK status for uptime monitoring.
+\end{itemize}
+
+\section{Database (SQLite)}
+\label{sec:impl_database}
+
+The \texttt{database.py} module (621 lines) contains all schema definitions and CRUD functions. Each function acquires a connection with \texttt{sqlite3.connect()}, executes its query, commits if writing, and closes the connection. The \texttt{row\_factory = sqlite3.Row} setting allows dictionary-style access to query results.
+
+A notable design choice is the migration function:
+
+\begin{lstlisting}[style=codestyle, language=Python, caption=Safe column migration for existing tables]
+def _migrate_existing_tables(cursor):
+    cursor.execute("PRAGMA table_info(incidents)")
+    incident_cols = {row[1] for row in cursor.fetchall()}
+    for col, ctype in [("latitude", "REAL"),
+                       ("longitude", "REAL"),
+                       ("ml_predicted_severity", "VARCHAR(20)"),
+                       ("ml_confidence", "REAL"),
+                       ("assigned_team_id", "TEXT"),
+                       ("route_path", "TEXT"),
+                       ("route_distance_km", "REAL"),
+                       ("route_eta_hours", "REAL")]:
+        if col not in incident_cols:
+            cursor.execute(
+                f"ALTER TABLE incidents ADD COLUMN {col} {ctype}")
+\end{lstlisting}
+
+This approach checks existing columns before attempting \texttt{ALTER TABLE}, preventing errors when the schema evolves across project iterations.
+
+\section{Machine Learning -- Random Forest}
+\label{sec:impl_ml}
+
+\subsection{Model Training}
+
+The training script in \texttt{ml/train\_severity\_model.py} follows a five-step pipeline:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Data Generation}: 5000 synthetic samples with disaster-type-correlated weather features. Floods get heavy rainfall; fires get high temperatures and low humidity.
+    \item \textbf{Feature Extraction}: Each sample passes through \texttt{extract\_features()} to produce a 13-element vector.
+    \item \textbf{Preprocessing}: \texttt{StandardScaler} normalizes features; \texttt{LabelEncoder} maps severity labels to integers.
+    \item \textbf{Grid Search}: \texttt{GridSearchCV} with 3-fold cross-validation over 12 hyperparameter combinations.
+    \item \textbf{Artifact Saving}: Best model, scaler, and encoder saved as \texttt{.joblib} files; a JSON report records accuracy, F1, and feature importances.
+\end{enumerate}
+
+\subsection{Feature Engineering}
+
+The feature vector consists of:
+
+\begin{table}[H]
+\centering
+\caption{Feature vector composition (13 features)}
+\label{tab:feature_vector}
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\textbf{Index} & \textbf{Feature} & \textbf{Encoding} \\
+\hline
+0--3 & disaster\_type\_flood, \_earthquake, \_fire, \_cyclone & One-hot (0 or 1) \\
+\hline
+4 & people\_affected & Numeric (default: 50) \\
+\hline
+5 & temperature & Numeric (default: 30.0) \\
+\hline
+6 & humidity & Numeric (default: 60.0) \\
+\hline
+7 & wind\_speed & Numeric (default: 10.0) \\
+\hline
+8 & rainfall\_mm & Numeric (default: 0.0) \\
+\hline
+9 & population\_density & Numeric (default: 3000) \\
+\hline
+10 & infrastructure\_score & Numeric (default: 5) \\
+\hline
+11 & hour\_of\_day & Numeric (default: 12) \\
+\hline
+12 & month & Numeric (default: 6) \\
+\hline
+\end{tabularx}
+\end{table}
+
+The feature order is defined once in \texttt{FEATURE\_ORDER} and shared between training and inference, preventing feature drift.
+
+\section{Incident Detection Agent}
+\label{sec:impl_incident_agent}
+
+The \texttt{IncidentDetectionAgent} lazy-loads the ML predictor on its first invocation. If the predictor is available and the strategy is ``smart,'' it calls \texttt{predictor.predict()} and uses the returned severity and confidence to set priority and risk. High-severity predictions with confidence above 0.75 are automatically marked high priority. If the predictor is unavailable, the agent applies a simple rule: severity ``high'' or people affected above 200 yields high priority.
+
+The agent's \texttt{handle\_message()} method processes a list of raw incidents and emits one \texttt{INCIDENT\_REPORTED} message containing all results.
+
+\section{Resource Allocation Agent}
+\label{sec:impl_resource_agent}
+
+This agent reads team counts from the \texttt{system\_config} table (8 teams for high priority, 3 for low in smart mode). It then queries \texttt{rescue\_teams} for available teams, maps each team and the incident to the nearest city in the A* graph using \texttt{haversine\_distance()}, and runs the solver. The team producing the lowest ETA is selected, and its database status is set to ``busy'' via \texttt{upsert\_rescue\_team()}.
+
+\section{Rescue Coordination Agent}
+\label{sec:impl_rescue_agent}
+
+Rescue capacity is calculated as teams assigned multiplied by per-team capacity (18 in smart mode, 12 in baseline). The rescued count is the minimum of people affected and capacity, reduced by a random loss within the configured loss factor range. This introduces controlled randomness that makes simulations more realistic.
+
+\section{Evaluation Agent}
+\label{sec:impl_eval_agent}
+
+Efficiency is computed as \texttt{(rescued / affected) * 100}. Resource usage is marked ``optimal'' when efficiency exceeds 80\%. The agent initializes a \texttt{DecisionSupportAgent} and calls \texttt{get\_explanation()} for every incident, appending the AI response to the evaluation result.
+
+\section{Message Bus}
+\label{sec:impl_message_bus}
+
+The \texttt{MessageBus} class in \texttt{message\_bus.py} uses Python's \texttt{queue.PriorityQueue} for thread-safe ordering. Each \texttt{Message} object implements \texttt{\_\_lt\_\_} so the queue sorts by priority first, then timestamp.
+
+Key implementation details:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{register\_agent(name, handler)}: Registers a callback and initializes an \texttt{AgentHealth} record.
+    \item \texttt{publish(sender, receiver, message\_type, payload, priority)}: Creates a \texttt{Message}, persists it to SQLite, broadcasts it via WebSocket, and enqueues it.
+    \item \texttt{process\_next()}: Dequeues the highest-priority message, resolves the target handler(s), calls the handler, and publishes any reply messages. On exception, retries up to \texttt{max\_retries} (default 3).
+\end{itemize}
+
+\section{WebSocket Real-Time Updates}
+\label{sec:impl_websocket}
+
+The \texttt{ConnectionManager} class maintains a list of active WebSocket connections. The \texttt{broadcast()} method iterates through connections and sends JSON-serialized messages, silently skipping any that have disconnected. The \texttt{/ws/simulation} endpoint accepts connections and keeps them alive by waiting for incoming messages in a loop.
+
+\section{Gemini Decision Support}
+\label{sec:impl_gemini}
+
+The \texttt{gemini\_service.py} module defines three classes:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{LLMProvider}: Abstract base with a \texttt{generate(prompt)} method.
+    \item \texttt{GeminiProvider}: Calls the Gemini 1.5 Flash REST API with \texttt{urllib.request}, using a 10-second timeout.
+    \item \texttt{MockLLMProvider}: Returns hardcoded JSON for testing without an API key.
+\end{itemize}
+
+The \texttt{DecisionSupportAgent} constructs a detailed prompt with incident location, disaster type, severity, people affected, teams assigned, resources, and rescue count. The prompt instructs the model to respond with a JSON object containing five keys. Response cleaning handles markdown code fences and stray whitespace. A module-level \texttt{\_cache} dictionary prevents redundant API calls for identical incident configurations.
+
+\section{Leaflet Map (LiveMap Component)}
+\label{sec:impl_map}
+
+The \texttt{LiveMap.jsx} component (299 lines) renders an interactive map using \texttt{react-leaflet}. Features include:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Incident Markers}: Custom emoji icons (fire, flood, earthquake, cyclone symbols) positioned at incident coordinates.
+    \item \textbf{Team Markers}: Rescue team positions with specialization labels.
+    \item \textbf{Route Overlays}: \texttt{Polyline} components trace A*-computed routes between teams and incidents.
+    \item \textbf{Animated Route Marker}: A helicopter icon animates along route coordinates using \texttt{setInterval}.
+    \item \textbf{Static POIs}: Hospitals, shelters, and fire stations in major cities with capacity details in popups.
+    \item \textbf{Heatmap Circles}: Optional severity-colored circles around incident sites.
+    \item \textbf{Filters}: Dropdown menus to filter by disaster type and severity level.
+\end{itemize}
+
+[Insert Live Map Screenshot]
+
+\section{Analytics Dashboard}
+\label{sec:impl_analytics}
+
+The analytics section of the dashboard calls \texttt{GET /api/analytics/summary} and displays:
+
+\begin{itemize}[leftmargin=*]
+    \item Total simulation runs, total incidents processed, and total lives saved as headline metrics.
+    \item A line chart of lives saved per run.
+    \item A bar chart comparing average efficiency between ``smart'' and ``baseline'' strategies.
+    \item A list of top-performing runs by lives saved.
+    \item Smart suggestions generated from historical data analysis.
+\end{itemize}
+
+[Insert Analytics Screenshot]
+
+\section{Report Generation}
+\label{sec:impl_reports}
+
+\subsection{CSV Export}
+
+The \texttt{generate\_csv\_report()} function fetches run details from SQLite and writes them to a \texttt{StringIO} buffer using Python's \texttt{csv.writer}. The CSV contains incident location, coordinates, disaster type, severity, priority, people affected, assigned team, route distance, and ETA. The buffer contents are returned as a FastAPI \texttt{Response} with \texttt{Content-Disposition: attachment}.
+
+\subsection{PDF Export}
+
+The \texttt{generate\_pdf\_report()} function uses ReportLab's \texttt{SimpleDocTemplate} with custom \texttt{ParagraphStyle} objects for headings, body text, and monospace sections. It produces:
+
+\begin{enumerate}[leftmargin=*]
+    \item A title page with run ID, strategy, seed, and generation date.
+    \item A metrics summary table with incident counts, lives saved, efficiency, and response time.
+    \item Per-incident dispatch logs with AI-generated severity analysis, resource allocation rationale, evacuation recommendations, and action items.
+\end{enumerate}
+
+[Insert Reports Screenshot]
+
+\section{Folder Structure}
+\label{sec:impl_folder}
+
+\begin{lstlisting}[style=pseudocode, caption=Project directory structure]
+multi_agent_disaster_management/
+  Multi-Agent-System/
+    app.py                  # FastAPI application
+    orchestrator.py         # State machine + agent wiring
+    agents.py               # Four agent classes
+    message_bus.py          # Priority-queued message bus
+    database.py             # SQLite schema + CRUD
+    models.py               # Pydantic data models
+    logger.py               # State transition logging
+    generate_data.py        # Synthetic data generator
+    smart_suggestions.py    # Historical analysis engine
+    requirements.txt        # Python dependencies
+    .env                    # API keys (not committed)
+    data/
+      input_data.json       # Generated incident data
+      indian_cities.json    # City coordinates + metadata
+    ml/
+      __init__.py
+      feature_engineering.py
+      train_severity_model.py
+      predictor.py
+      gemini_service.py
+      models/               # Trained model artifacts
+    routing/
+      __init__.py
+      astar.py              # A* solver + highway graph
+    utils/
+      report_generator.py   # CSV + PDF report compiler
+  multiagent project/       # React frontend
+    src/
+      App.jsx               # Main dashboard component
+      index.js              # React entry point
+      index.css             # Dark theme stylesheet
+      components/
+        LiveMap.jsx          # Leaflet map component
+    package.json
+    public/
+\end{lstlisting}
+
+\section{Configuration}
+\label{sec:impl_config}
+
+Runtime configuration is stored in the \texttt{system\_config} table as key-value pairs. Default values are seeded on first startup:
+
+\begin{table}[H]
+\centering
+\caption{Default system configuration values}
+\label{tab:config_values}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Key} & \textbf{Default} & \textbf{Purpose} \\
+\hline
+high\_severity\_teams & 8 & Teams dispatched for high-priority incidents \\
+\hline
+low\_severity\_teams & 3 & Teams dispatched for low/medium-priority incidents \\
+\hline
+smart\_team\_capacity & 18 & People each team can rescue in smart mode \\
+\hline
+baseline\_team\_capacity & 12 & People each team can rescue in baseline mode \\
+\hline
+smart\_loss\_factor & 0.08 & Maximum random loss percentage in smart mode \\
+\hline
+baseline\_loss\_factor & 0.22 & Maximum random loss percentage in baseline mode \\
+\hline
+\end{tabular}
+\end{table}
+
+These values can be modified through the admin panel via \texttt{POST /api/admin/config}.
+
+\section{Implementation Challenges}
+\label{sec:impl_challenges}
+
+Several non-trivial challenges arose during development:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{WebSocket Broadcasting from Synchronous Code}: FastAPI agents run in background threads, but WebSocket broadcasting requires the async event loop. The solution was to capture the main event loop at startup and use \texttt{asyncio.run\_coroutine\_threadsafe()} for thread-safe broadcasting.
+
+    \item \textbf{ML Model Hot-Reloading}: When the model is retrained via the API, the old predictor singleton remains in memory. The training endpoint manually resets the singleton (\texttt{pred\_mod.\_singleton = None}) to force a fresh load on the next prediction call.
+
+    \item \textbf{City Coordinate Mapping for A*}: The A* solver operates on city names, but incidents and teams have raw latitude/longitude coordinates. The Resource Allocation Agent maps each coordinate to the nearest city in the graph by iterating through all cities and computing Haversine distances---a brute-force approach that works because the graph is small (30 cities).
+
+    \item \textbf{Gemini Response Parsing}: The Gemini API sometimes wraps JSON in markdown code fences or returns trailing commas. The response cleaning logic strips \texttt{```json} and \texttt{```} markers and handles edge cases before JSON parsing.
+
+    \item \textbf{Idempotent Schema Migration}: The database schema evolved across development phases. The \texttt{\_migrate\_existing\_tables()} function checks for column existence using \texttt{PRAGMA table\_info} before issuing \texttt{ALTER TABLE}, ensuring the application can start cleanly against both fresh and pre-existing databases.
+\end{enumerate}
+
+\section{Chapter Summary}
+\label{sec:ch6_summary}
+
+This chapter documented the implementation of every module in the project: the React frontend with WebSocket integration and SVG charts, the FastAPI backend with background task simulation, SQLite persistence with migration support, Random Forest training and inference, four specialized agents, a priority-queued message bus, A* route optimization, Gemini AI decision support with caching and fallback, Leaflet map rendering, and CSV/PDF report generation. Five specific implementation challenges and their solutions were also discussed.

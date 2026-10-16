@@ -1,0 +1,398 @@
+\appendix
+
+\chapter{Appendix}
+\label{ch:appendix}
+
+\section{Installation Guide}
+\label{sec:installation_guide}
+
+\subsection{Prerequisites}
+
+\begin{itemize}[leftmargin=*]
+    \item Python 3.10 or higher
+    \item Node.js 16 or higher (with npm)
+    \item A modern web browser (Chrome, Firefox, or Edge)
+    \item (Optional) A Google Gemini API key for AI decision support
+\end{itemize}
+
+\subsection{Backend Setup}
+
+\begin{lstlisting}[style=codestyle, language=bash, caption=Backend installation and startup]
+# Navigate to the backend directory
+cd Multi-Agent-System
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# (Optional) Set the Gemini API key
+# Create a .env file or set the environment variable:
+set GEMINI_API_KEY=your_api_key_here
+
+# (Optional) Generate synthetic input data
+python generate_data.py --count 150 --seed 42
+
+# (Optional) Train the ML model
+python -m ml.train_severity_model --samples 5000
+
+# Start the FastAPI server
+python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+\end{lstlisting}
+
+The server starts at \texttt{http://localhost:8000}. The interactive API documentation is available at \texttt{http://localhost:8000/docs}.
+
+\subsection{Frontend Setup}
+
+\begin{lstlisting}[style=codestyle, language=bash, caption=Frontend installation and startup]
+# Navigate to the frontend directory
+cd "multiagent project"
+
+# Install Node.js dependencies
+npm install
+
+# Start the development server
+npm start
+\end{lstlisting}
+
+The React application starts at \texttt{http://localhost:3000} and connects to the backend at \texttt{http://localhost:8000}.
+
+\subsection{Quick Start (Windows)}
+
+A batch file \texttt{RUN\_PROJECT.bat} is provided at the project root to start both servers simultaneously.
+
+\section{User Manual}
+\label{sec:user_manual}
+
+\subsection{Login}
+
+Open the application in a browser. The login screen appears first. Use the default credentials:
+
+\begin{table}[H]
+\centering
+\caption{Default user accounts}
+\label{tab:default_users}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Role} & \textbf{Email} & \textbf{Password} & \textbf{Access Level} \\
+\hline
+Operator & operator@disaster.local & operator123 & Dashboard, Simulation, Map, Reports \\
+\hline
+Admin & admin@disaster.local & admin123 & All features + User Management + Config \\
+\hline
+\end{tabular}
+\end{table}
+
+[Insert Login Screenshot]
+
+\subsection{Running a Simulation}
+
+\begin{enumerate}[leftmargin=*]
+    \item Navigate to the \textbf{Simulation} tab.
+    \item Enter a seed value (any integer; use 42 for reproducible results).
+    \item Select the strategy: \textbf{Smart} (ML + A* routing) or \textbf{Baseline} (fixed allocation).
+    \item Click \textbf{Run Simulation}.
+    \item The state tracker updates in real time as the pipeline progresses.
+    \item Once complete, metrics appear below the state tracker.
+\end{enumerate}
+
+\subsection{Viewing the Map}
+
+\begin{enumerate}[leftmargin=*]
+    \item Navigate to the \textbf{Map} tab after a simulation completes.
+    \item Incident markers appear at their geographic positions.
+    \item Route polylines show the A*-computed paths from teams to incidents.
+    \item Use the disaster type and severity dropdowns to filter visible markers.
+    \item Toggle hospitals, shelters, and fire stations using the sidebar checkboxes.
+\end{enumerate}
+
+[Insert Live Map Screenshot]
+
+\subsection{Viewing Analytics}
+
+Navigate to the \textbf{Analytics} tab to see cross-run statistics, efficiency charts, and smart suggestions based on historical data.
+
+[Insert Analytics Screenshot]
+
+\subsection{Downloading Reports}
+
+\begin{enumerate}[leftmargin=*]
+    \item Select a completed run from the run list.
+    \item Click \textbf{Download CSV} for a spreadsheet-compatible file.
+    \item Click \textbf{Download PDF} for a styled report with AI explanations.
+\end{enumerate}
+
+[Insert Reports Screenshot]
+
+\subsection{Admin Panel}
+
+Admin users see an additional \textbf{Admin} tab with:
+\begin{itemize}[leftmargin=*]
+    \item User management: create new users, change roles, delete users.
+    \item System configuration: adjust team counts, capacity, and loss factors.
+    \item Rescue team management: add, edit, or view rescue teams.
+\end{itemize}
+
+\subsection{ML Management}
+
+The \textbf{ML} tab allows:
+\begin{itemize}[leftmargin=*]
+    \item Viewing the active model's accuracy, F1 score, and training date.
+    \item Triggering model retraining via a button click.
+    \item Running one-off severity predictions with custom feature inputs.
+\end{itemize}
+
+\section{Folder Structure}
+\label{sec:appendix_folder}
+
+\begin{lstlisting}[style=pseudocode, caption=Complete project folder structure]
+multi_agent_disaster_management/
+|
+|-- Multi-Agent-System/               # Backend (Python/FastAPI)
+|   |-- app.py                        # FastAPI application + endpoints
+|   |-- orchestrator.py               # State machine + agent wiring
+|   |-- agents.py                     # 4 agent classes
+|   |-- message_bus.py                # Priority-queued message bus
+|   |-- database.py                   # SQLite schema + CRUD (621 lines)
+|   |-- models.py                     # Pydantic data models
+|   |-- logger.py                     # State transition logging
+|   |-- generate_data.py              # Synthetic data generator
+|   |-- smart_suggestions.py          # Historical analysis engine
+|   |-- test_orchestrator.py          # Integration test script
+|   |-- requirements.txt              # Python dependencies
+|   |-- .env                          # API keys (not committed)
+|   |-- state_history.db              # SQLite database file
+|   |
+|   |-- data/
+|   |   |-- input_data.json           # Generated incident data
+|   |   |-- indian_cities.json        # 30+ Indian city coordinates
+|   |
+|   |-- ml/
+|   |   |-- __init__.py
+|   |   |-- feature_engineering.py    # Feature vector pipeline
+|   |   |-- train_severity_model.py   # RF training + GridSearchCV
+|   |   |-- predictor.py              # Singleton inference wrapper
+|   |   |-- gemini_service.py         # Gemini API + fallback
+|   |   |-- models/                   # .joblib artifacts
+|   |       |-- severity_model.joblib
+|   |       |-- label_encoder.joblib
+|   |       |-- feature_scaler.joblib
+|   |       |-- training_report.json
+|   |
+|   |-- routing/
+|   |   |-- __init__.py
+|   |   |-- astar.py                  # A* solver + highway graph
+|   |
+|   |-- utils/
+|       |-- report_generator.py       # CSV + PDF report compiler
+|
+|-- multiagent project/               # Frontend (React)
+|   |-- package.json
+|   |-- public/
+|   |-- src/
+|       |-- App.jsx                   # Main dashboard (1289 lines)
+|       |-- index.js                  # React entry point
+|       |-- index.css                 # Dark theme (12KB)
+|       |-- components/
+|           |-- LiveMap.jsx           # Leaflet map (299 lines)
+|
+|-- latex_report/                     # This report
+|   |-- main.tex
+|   |-- chapters/
+|   |-- images/
+|
+|-- RUN_PROJECT.bat                   # Quick start script
+|-- main.py                          # Alternative entry point
+\end{lstlisting}
+
+\section{Database Schema}
+\label{sec:appendix_schema}
+
+\begin{lstlisting}[style=codestyle, language=SQL, caption=Complete SQLite schema (condensed)]
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'operator'
+);
+
+CREATE TABLE simulation_runs (
+    run_id TEXT PRIMARY KEY,
+    user_id INTEGER,
+    seed INTEGER NOT NULL,
+    strategy VARCHAR(20) DEFAULT 'smart',
+    status VARCHAR(20) DEFAULT 'RUNNING',
+    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE incidents (
+    incident_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    location VARCHAR(120),
+    latitude REAL, longitude REAL,
+    severity VARCHAR(20),
+    people_affected INTEGER,
+    disaster_type VARCHAR(50),
+    priority VARCHAR(20),
+    estimated_risk VARCHAR(20),
+    ml_predicted_severity VARCHAR(20),
+    ml_confidence REAL,
+    assigned_team_id TEXT,
+    route_path TEXT,
+    route_distance_km REAL,
+    route_eta_hours REAL,
+    FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+);
+
+CREATE TABLE agent_logs (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    agent_name VARCHAR(60) NOT NULL,
+    state VARCHAR(40) NOT NULL,
+    output_json TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+);
+
+CREATE TABLE run_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    state TEXT NOT NULL,
+    payload TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE run_metrics (
+    metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT UNIQUE NOT NULL,
+    total_incidents INTEGER,
+    total_affected INTEGER,
+    total_lives_saved INTEGER,
+    overall_efficiency VARCHAR(20),
+    avg_response_time VARCHAR(30),
+    resource_utilization VARCHAR(20),
+    status VARCHAR(20),
+    FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+);
+
+CREATE TABLE system_config (
+    key VARCHAR(50) PRIMARY KEY,
+    value VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE custom_incidents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    location VARCHAR(120) NOT NULL,
+    latitude REAL, longitude REAL,
+    severity VARCHAR(20) NOT NULL,
+    people_affected INTEGER NOT NULL,
+    disaster_type VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE agent_messages (
+    message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    sender VARCHAR(60) NOT NULL,
+    receiver VARCHAR(60) NOT NULL,
+    message_type VARCHAR(30) NOT NULL,
+    payload TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE ml_models (
+    model_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model_name VARCHAR(100) NOT NULL,
+    model_path VARCHAR(255) NOT NULL,
+    accuracy REAL,
+    f1_score REAL,
+    training_samples INTEGER,
+    trained_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT 1
+);
+
+CREATE TABLE rescue_teams (
+    team_id VARCHAR(50) PRIMARY KEY,
+    team_name VARCHAR(100) NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    status VARCHAR(20) DEFAULT 'available',
+    capacity INTEGER DEFAULT 10,
+    specialization VARCHAR(50)
+);
+\end{lstlisting}
+
+\section{API Endpoints Reference}
+\label{sec:appendix_api}
+
+\begin{longtable}{|l|l|p{6cm}|}
+\caption{Complete API endpoint reference} \label{tab:api_ref} \\
+\hline
+\textbf{Method} & \textbf{Endpoint} & \textbf{Description} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Method} & \textbf{Endpoint} & \textbf{Description} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+POST & /api/run & Trigger a simulation run with seed, strategy, and user\_id. Returns run\_id. \\
+\hline
+GET & /api/runs & List all simulation run IDs ordered by recency. \\
+\hline
+GET & /api/run/\{id\}/history & Get state transition history for a run. \\
+\hline
+GET & /api/run/\{id\}/status & Get current run status (RUNNING, COMPLETED, ERROR). \\
+\hline
+GET & /api/run/\{id\}/incidents & Get all incidents for a specific run. \\
+\hline
+GET & /api/run/\{id\}/messages & Get inter-agent message log for a run. \\
+\hline
+GET & /api/incidents/geo/\{id\} & Get geo-coded incidents with route data for map rendering. \\
+\hline
+POST & /api/auth/login & Authenticate with email and password. \\
+\hline
+POST & /api/auth/register & Create a new user account. \\
+\hline
+GET & /api/admin/users & List all registered users. \\
+\hline
+DELETE & /api/admin/users/\{id\} & Delete a user by ID. \\
+\hline
+PUT & /api/admin/users/\{id\}/role & Update a user's role. \\
+\hline
+GET & /api/admin/config & Get system configuration key-value pairs. \\
+\hline
+POST & /api/admin/config & Update system configuration values. \\
+\hline
+POST & /api/incidents/custom & Create a custom incident. \\
+\hline
+GET & /api/incidents/custom & List all custom incidents. \\
+\hline
+POST & /api/incidents/custom/clear & Delete all custom incidents. \\
+\hline
+GET & /api/analytics/summary & Get cross-run analytics summary. \\
+\hline
+GET & /api/suggestions & Get smart strategy suggestions. \\
+\hline
+POST & /api/ml/train & Trigger ML model retraining in background. \\
+\hline
+GET & /api/ml/status & Get active ML model metadata. \\
+\hline
+POST & /api/ml/predict & Run a one-off severity prediction. \\
+\hline
+GET & /api/teams & List all rescue teams. \\
+\hline
+POST & /api/teams & Create or update a rescue team. \\
+\hline
+GET & /api/run/\{id\}/export/csv & Download CSV report for a run. \\
+\hline
+GET & /api/run/\{id\}/export/pdf & Download PDF report for a run. \\
+\hline
+GET & /api/health & Health check endpoint. \\
+\hline
+WS & /ws/simulation & WebSocket for real-time state and message broadcasting. \\
+\hline
+\end{longtable}

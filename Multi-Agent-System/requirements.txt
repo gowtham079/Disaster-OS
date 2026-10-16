@@ -1,0 +1,21 @@
+# Core web framework
+fastapi
+uvicorn[standard]
+pydantic
+
+# Phase 1: ML severity prediction
+scikit-learn>=1.3
+pandas>=2.0
+numpy>=1.24
+joblib
+
+# PDF report export (used by utils/report_generator.py)
+reportlab>=4.0
+
+# Async HTTP client for live disaster feed
+httpx>=0.24
+
+# Environment variables & AI decision support
+python-dotenv>=1.0.0
+google-genai>=2.0.0
+

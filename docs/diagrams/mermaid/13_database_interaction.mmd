@@ -1,0 +1,29 @@
+flowchart TD
+    DASH[React Dashboard<br/>App.jsx]
+    API[FastAPI Backend<br/>app.py]
+    ORCH[Orchestrator<br/>orchestrator.py]
+    DB[(SQLite Database<br/>state_history.db)]
+
+    DASH -->|"POST /api/run"| API
+    API -->|"create Orchestrator"| ORCH
+    ORCH -->|"WRITE create_run()"| DB
+    ORCH -->|"WRITE save_incidents()"| DB
+    ORCH -->|"WRITE save_agent_log()"| DB
+    ORCH -->|"WRITE log_transition()<br/>run_logs"| DB
+    ORCH -->|"WRITE save_run_metrics()"| DB
+    ORCH -->|"WRITE complete_run()"| DB
+
+    DASH -->|"GET /api/analytics/summary<br/>READ Fetch Analytics"| API
+    API -->|"READ get_analytics_summary()"| DB
+
+    DASH -->|"GET /api/run/id/history<br/>READ Fetch Run Logs"| API
+    API -->|"READ get_run_history()"| DB
+
+    DASH -->|"GET /api/run/id/incidents<br/>GET /api/incidents/geo<br/>READ Fetch Incidents"| API
+    API -->|"READ get_incidents_by_run()<br/>get_incidents_with_geo()"| DB
+
+    DASH -->|"GET /api/run/id/export/csv<br/>GET /api/run/id/export/pdf<br/>READ Fetch Reports"| API
+    API -->|"READ report_generator<br/>incidents · metrics"| DB
+
+    DASH -->|"GET /api/run/id/messages<br/>READ Fetch Agent Messages"| API
+    API -->|"READ get_agent_messages()"| DB

@@ -1,0 +1,169 @@
+\chapter{System Analysis}
+\label{ch:system_analysis}
+
+\section{Requirement Analysis}
+\label{sec:requirement_analysis}
+
+Requirements were gathered by examining the functional responsibilities of each system module. Since this is a simulation platform rather than a client-commissioned product, requirements were derived from the project's own objectives: what the agents need to do, what the dashboard needs to display, and what data needs to be persisted.
+
+\section{Functional Requirements}
+\label{sec:functional_requirements}
+
+\begin{table}[H]
+\centering
+\caption{Functional requirements of the system}
+\label{tab:functional_req}
+\begin{tabularx}{\textwidth}{|c|X|c|}
+\hline
+\textbf{ID} & \textbf{Requirement} & \textbf{Priority} \\
+\hline
+FR-01 & The system shall allow users to register and log in with email and password. & High \\
+\hline
+FR-02 & The system shall accept simulation parameters (seed, strategy) and trigger a background simulation run. & High \\
+\hline
+FR-03 & The Incident Detection Agent shall classify severity using a trained Random Forest model when available, and fall back to rule-based logic otherwise. & High \\
+\hline
+FR-04 & The Resource Allocation Agent shall find the nearest available rescue team using A* route optimization and mark the assigned team as busy. & High \\
+\hline
+FR-05 & The Rescue Coordination Agent shall compute rescue counts based on team capacity and configurable loss factors. & High \\
+\hline
+FR-06 & The Evaluation Agent shall compute efficiency metrics and generate AI-powered decision explanations via Gemini API. & High \\
+\hline
+FR-07 & The message bus shall route messages between agents with priority queuing and retry logic. & High \\
+\hline
+FR-08 & The system shall broadcast state transitions and agent messages to the frontend via WebSocket. & Medium \\
+\hline
+FR-09 & The dashboard shall display an interactive Leaflet map with incident markers, team positions, route overlays, and POI markers. & Medium \\
+\hline
+FR-10 & The system shall generate downloadable CSV and PDF reports for completed simulation runs. & Medium \\
+\hline
+FR-11 & The admin panel shall support user management (create, delete, role update) and system configuration. & Medium \\
+\hline
+FR-12 & The system shall provide an analytics summary including total runs, total incidents, total lives saved, and strategy breakdowns. & Medium \\
+\hline
+FR-13 & The system shall support custom incident creation with location, severity, people affected, disaster type, and coordinates. & Low \\
+\hline
+FR-14 & The ML model shall be retrainable through an API endpoint without restarting the server. & Low \\
+\hline
+FR-15 & The system shall provide smart suggestions based on historical run analysis. & Low \\
+\hline
+\end{tabularx}
+\end{table}
+
+\section{Non-Functional Requirements}
+\label{sec:non_functional_requirements}
+
+\begin{table}[H]
+\centering
+\caption{Non-functional requirements of the system}
+\label{tab:nonfunctional_req}
+\begin{tabularx}{\textwidth}{|c|X|}
+\hline
+\textbf{ID} & \textbf{Requirement} \\
+\hline
+NFR-01 & The backend shall respond to API calls within 500ms under normal load. \\
+\hline
+NFR-02 & A full simulation with 150 incidents shall complete within 60 seconds. \\
+\hline
+NFR-03 & The database schema shall be initialized idempotently---running \texttt{init\_db()} multiple times shall not corrupt or duplicate data. \\
+\hline
+NFR-04 & The system shall remain functional without internet access. Gemini AI and ML model fallbacks shall activate automatically. \\
+\hline
+NFR-05 & All simulation runs shall be reproducible. Identical seed and strategy inputs shall produce identical outputs. \\
+\hline
+NFR-06 & The frontend shall be responsive and render correctly on screen widths from 1024px upward. \\
+\hline
+NFR-07 & WebSocket connections shall handle disconnection gracefully without crashing the backend. \\
+\hline
+NFR-08 & The message bus shall retry failed agent handlers up to 3 times before dropping the message. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\section{Feasibility Study}
+\label{sec:feasibility_study}
+
+\subsection{Technical Feasibility}
+
+All technologies used in this project are open-source and freely available. Python, FastAPI, React, SQLite, and scikit-learn have well-documented APIs and active community support. The Google Gemini API provides a free tier sufficient for the expected volume of calls in a simulation environment. The project does not require specialized hardware---a standard development laptop with 8GB RAM is sufficient to run the backend, frontend, and ML training pipeline concurrently.
+
+\subsection{Operational Feasibility}
+
+The system is designed for single-operator use or small team operation. The React dashboard provides a visual interface that does not require command-line expertise. Simulation runs are triggered with a button click, and results are displayed automatically. PDF and CSV exports are one-click operations. The learning curve is minimal.
+
+\subsection{Economic Feasibility}
+
+The project has zero licensing costs. Python, Node.js, SQLite, React, Leaflet, and scikit-learn are all open source. The Gemini API free tier covers the project's needs. Hosting the application requires only a standard web server. No cloud-specific infrastructure (containers, load balancers, managed databases) is required for development and demonstration purposes.
+
+\subsection{Schedule Feasibility}
+
+The project was developed over a single academic semester. The modular architecture allowed parallel development of independent components: the ML pipeline was developed alongside the frontend, and the route optimization module was built independently of the agent framework. This parallelism kept the project on schedule.
+
+\section{Software Requirements}
+\label{sec:software_requirements}
+
+\begin{table}[H]
+\centering
+\caption{Software requirements}
+\label{tab:software_req}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\textbf{Component} & \textbf{Specification} \\
+\hline
+Operating System & Windows 10/11, Linux, or macOS \\
+\hline
+Python & Version 3.10 or higher \\
+\hline
+Node.js & Version 16 or higher \\
+\hline
+Backend Framework & FastAPI with Uvicorn ASGI server \\
+\hline
+Frontend Framework & React 18 with react-scripts \\
+\hline
+Database & SQLite 3 (built into Python standard library) \\
+\hline
+ML Library & scikit-learn $\geq$ 1.3, pandas $\geq$ 2.0, numpy $\geq$ 1.24 \\
+\hline
+Data Validation & Pydantic (bundled with FastAPI) \\
+\hline
+Map Library & Leaflet 1.9.4 via react-leaflet 4.2.1 \\
+\hline
+PDF Generation & ReportLab \\
+\hline
+Model Serialization & joblib \\
+\hline
+AI Service & Google Gemini 1.5 Flash API (optional) \\
+\hline
+Browser & Chrome, Firefox, or Edge (latest version) \\
+\hline
+\end{tabularx}
+\end{table}
+
+\section{Hardware Requirements}
+\label{sec:hardware_requirements}
+
+\begin{table}[H]
+\centering
+\caption{Hardware requirements}
+\label{tab:hardware_req}
+\begin{tabularx}{\textwidth}{|l|X|X|}
+\hline
+\textbf{Component} & \textbf{Minimum} & \textbf{Recommended} \\
+\hline
+Processor & Intel Core i3 / AMD equivalent & Intel Core i5 or higher \\
+\hline
+RAM & 4 GB & 8 GB or higher \\
+\hline
+Disk Space & 500 MB & 1 GB \\
+\hline
+Network & Not required (offline capable) & Broadband (for Gemini API) \\
+\hline
+Display & 1024 $\times$ 768 resolution & 1920 $\times$ 1080 resolution \\
+\hline
+\end{tabularx}
+\end{table}
+
+\section{Chapter Summary}
+\label{sec:ch4_summary}
+
+This chapter documented 15 functional requirements and 8 non-functional requirements derived from the project's modules. The feasibility study confirmed that the project is viable across technical, operational, economic, and schedule dimensions. Software dependencies include Python 3.10+, Node.js 16+, FastAPI, React 18, SQLite, scikit-learn, Leaflet, and ReportLab. The hardware requirements are modest, with the system running comfortably on a standard development machine.

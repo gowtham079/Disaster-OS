@@ -1,0 +1,284 @@
+\chapter{System Design}
+\label{ch:system_design}
+
+\section{Overall Architecture}
+\label{sec:overall_architecture}
+
+The system follows a three-tier architecture: a React frontend communicates with a FastAPI backend over HTTP REST endpoints and a WebSocket channel, and the backend persists data in an SQLite database file.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}[Insert Overall Architecture Diagram]\vspace{3cm}}}
+\caption{Three-tier system architecture}
+\label{fig:architecture}
+\end{figure}
+
+The backend itself is organized around three subsystems:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Orchestrator + State Machine}: Controls the simulation lifecycle. The \texttt{Orchestrator} class creates agents, initializes the message bus, loads input data, and drives the pipeline by publishing the initial trigger message and processing queued messages until the state reaches \texttt{COMPLETED} or \texttt{ERROR}.
+
+    \item \textbf{Agent Layer + Message Bus}: Four agents registered on the message bus. Each agent exposes a \texttt{handle\_message()} method that the bus calls when a message addressed to that agent is dequeued. The Orchestrator wraps each agent's handler in a callback that also logs outputs, saves database records, and transitions the state machine.
+
+    \item \textbf{Service Layer}: Includes the ML module (training, feature engineering, prediction), the A* routing module, the Gemini decision support service, and the report generator. Agents call these services as needed.
+\end{itemize}
+
+\section{Database Design}
+\label{sec:database_design}
+
+The SQLite database contains ten tables. The schema is initialized by the \texttt{init\_db()} function in \texttt{database.py}, which uses \texttt{CREATE TABLE IF NOT EXISTS} for idempotent setup and a migration function to add columns to existing tables.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}[Insert ER Diagram]\vspace{3cm}}}
+\caption{Entity-relationship diagram of the SQLite database}
+\label{fig:er_diagram}
+\end{figure}
+
+\subsection{Table Descriptions}
+
+\begin{table}[H]
+\centering
+\caption{Database tables and their purposes}
+\label{tab:db_tables}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\textbf{Table} & \textbf{Purpose} \\
+\hline
+\texttt{users} & Stores user accounts with name, email, hashed password, and role (operator/admin). Seeded with two default accounts. \\
+\hline
+\texttt{simulation\_runs} & One row per simulation run. Stores run ID (UUID), user ID (foreign key), seed, strategy, status, and timestamps. \\
+\hline
+\texttt{incidents} & One row per incident per run. Includes location, coordinates, severity, people affected, disaster type, priority, risk level, ML prediction fields, and routing fields. \\
+\hline
+\texttt{agent\_logs} & Stores the JSON output of each agent for each run. Used for audit trails and post-simulation analysis. \\
+\hline
+\texttt{run\_logs} & Stores every state machine transition with state name, payload, and timestamp. Drives the run history API. \\
+\hline
+\texttt{run\_metrics} & Aggregate metrics per run: total incidents, total affected, total lives saved, overall efficiency, average response time, resource utilization. \\
+\hline
+\texttt{system\_config} & Key-value configuration store. Includes team counts, capacity per team, and loss factors for both smart and baseline strategies. \\
+\hline
+\texttt{custom\_incidents} & User-created incidents from the dashboard. These override the default input data when present. \\
+\hline
+\texttt{agent\_messages} & Every message published on the bus is logged here with sender, receiver, type, payload, and timestamp. \\
+\hline
+\texttt{rescue\_teams} & Stores rescue team definitions with team ID, name, coordinates, status, capacity, and specialization. Seeded with 8 default teams across Indian cities. \\
+\hline
+\texttt{ml\_models} & Tracks trained ML model metadata: name, path, accuracy, F1 score, training sample count, training date, and active status. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Key Relationships}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{simulation\_runs.user\_id} $\rightarrow$ \texttt{users.user\_id}: Each run is associated with the user who triggered it.
+    \item \texttt{incidents.run\_id} $\rightarrow$ \texttt{simulation\_runs.run\_id}: Incidents are scoped to a specific run.
+    \item \texttt{agent\_logs.run\_id} $\rightarrow$ \texttt{simulation\_runs.run\_id}: Agent outputs are tied to runs.
+    \item \texttt{run\_metrics.run\_id} $\rightarrow$ \texttt{simulation\_runs.run\_id}: One metrics row per completed run.
+    \item \texttt{agent\_messages.run\_id} $\rightarrow$ \texttt{simulation\_runs.run\_id}: Message history is per-run.
+\end{itemize}
+
+\section{Module Design}
+\label{sec:module_design}
+
+The backend is organized into the following Python modules:
+
+\begin{table}[H]
+\centering
+\caption{Backend module breakdown}
+\label{tab:module_design}
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\textbf{Module} & \textbf{File} & \textbf{Responsibility} \\
+\hline
+API Layer & \texttt{app.py} & FastAPI application with REST endpoints and WebSocket handler. \\
+\hline
+Orchestrator & \texttt{orchestrator.py} & State machine, agent initialization, message bus wiring, run lifecycle. \\
+\hline
+Agents & \texttt{agents.py} & Four agent classes, each with \texttt{run()} and \texttt{handle\_message()} methods. \\
+\hline
+Message Bus & \texttt{message\_bus.py} & Priority queue, publish/subscribe, retry logic, health monitoring. \\
+\hline
+Database & \texttt{database.py} & Schema initialization, CRUD functions, analytics queries. \\
+\hline
+Logger & \texttt{logger.py} & State transition logging, run history retrieval. \\
+\hline
+Models & \texttt{models.py} & Pydantic data models for incidents, allocations, rescues, evaluations. \\
+\hline
+ML Training & \texttt{ml/train\_severity\_model.py} & Synthetic data generation, Random Forest training with GridSearchCV. \\
+\hline
+Feature Eng. & \texttt{ml/feature\_engineering.py} & Feature extraction, one-hot encoding, array conversion. \\
+\hline
+Predictor & \texttt{ml/predictor.py} & Singleton model loader with predict and batch\_predict methods. \\
+\hline
+Gemini Service & \texttt{ml/gemini\_service.py} & LLM provider abstraction, prompt construction, caching, fallback. \\
+\hline
+Routing & \texttt{routing/astar.py} & A* solver, Haversine distance, highway graph, blocked edge support. \\
+\hline
+Data Generator & \texttt{generate\_data.py} & Geospatial incident data generator with weather correlations. \\
+\hline
+Report Gen. & \texttt{utils/report\_generator.py} & CSV and PDF report compilation from run data. \\
+\hline
+Suggestions & \texttt{smart\_suggestions.py} & Historical analysis and strategy recommendation engine. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\section{Data Flow}
+\label{sec:data_flow}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}[Insert Data Flow Diagram (Level 0)]\vspace{3cm}}}
+\caption{Level 0 DFD showing external entities and system boundary}
+\label{fig:dfd_level0}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}[Insert Data Flow Diagram (Level 1)]\vspace{3cm}}}
+\caption{Level 1 DFD showing internal process decomposition}
+\label{fig:dfd_level1}
+\end{figure}
+
+At Level 0, the system has two external entities: the User (who configures and triggers simulations) and the Gemini API (which provides AI explanations). The user sends simulation parameters and receives dashboards, maps, and reports. The Gemini API receives structured prompts and returns JSON explanations.
+
+At Level 1, the main processes are:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Authentication}: Validates user credentials against the \texttt{users} table.
+    \item \textbf{Simulation Engine}: Loads data, runs the four-agent pipeline through the message bus, and saves results.
+    \item \textbf{ML Pipeline}: Trains the severity model, saves artifacts, and provides predictions.
+    \item \textbf{Analytics Engine}: Queries the database for run summaries, strategy breakdowns, and top runs.
+    \item \textbf{Report Generator}: Fetches run data and compiles CSV/PDF exports.
+    \item \textbf{Map Service}: Provides incident and team geodata for Leaflet rendering.
+\end{enumerate}
+
+\section{Component Design}
+\label{sec:component_design}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}[Insert Use Case Diagram]\vspace{3cm}}}
+\caption{Use case diagram showing actor-system interactions}
+\label{fig:use_case}
+\end{figure}
+
+The system recognizes two actor roles:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Operator}: Can log in, configure simulation parameters, trigger runs, view results on the dashboard and map, download reports, and create custom incidents.
+    \item \textbf{Admin}: Has all operator capabilities plus user management (create, delete, change roles) and system configuration updates (team counts, capacity, loss factors).
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}[Insert Sequence Diagram]\vspace{3cm}}}
+\caption{Sequence diagram for a complete simulation run}
+\label{fig:sequence_diagram}
+\end{figure}
+
+The sequence for a simulation run proceeds as follows:
+
+\begin{enumerate}[leftmargin=*]
+    \item User clicks ``Run Simulation'' in the React dashboard.
+    \item React sends \texttt{POST /api/run} with seed and strategy.
+    \item FastAPI creates an \texttt{Orchestrator} in a background task and returns the run ID immediately.
+    \item The Orchestrator loads data, publishes \texttt{TRIGGER\_INCIDENT\_DETECTION}.
+    \item The bus routes the message to the Incident Detection Agent's wrapped handler.
+    \item The handler runs ML prediction (or fallback), saves logs, saves incidents, transitions state, and returns \texttt{INCIDENT\_REPORTED} as a reply.
+    \item The bus routes to Resource Allocation, which runs A* routing, saves route data, and returns \texttt{RESOURCE\_ALLOCATED}.
+    \item The bus routes to Rescue Coordination, which computes rescue outcomes and returns \texttt{RESCUE\_IN\_PROGRESS}.
+    \item The bus routes to Evaluation, which computes metrics, calls Gemini, and returns \texttt{SIMULATION\_COMPLETED}.
+    \item The Orchestrator transitions to \texttt{COMPLETED} and calls \texttt{complete\_run()}.
+    \item Each transition broadcasts a WebSocket message, which React receives and uses to update the UI.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}[Insert Activity Diagram]\vspace{3cm}}}
+\caption{Activity diagram showing the simulation execution flow}
+\label{fig:activity_diagram}
+\end{figure}
+
+\section{API Design}
+\label{sec:api_design}
+
+The FastAPI backend exposes the following endpoint groups:
+
+\begin{table}[H]
+\centering
+\caption{REST API endpoints}
+\label{tab:api_endpoints}
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\textbf{Method} & \textbf{Endpoint} & \textbf{Description} \\
+\hline
+POST & \texttt{/api/run} & Trigger a simulation with seed and strategy. \\
+\hline
+GET & \texttt{/api/runs} & List all past run IDs. \\
+\hline
+GET & \texttt{/api/run/\{id\}/history} & Get state transition history for a run. \\
+\hline
+GET & \texttt{/api/run/\{id\}/status} & Get current run status. \\
+\hline
+GET & \texttt{/api/run/\{id\}/incidents} & Get incidents for a run. \\
+\hline
+GET & \texttt{/api/run/\{id\}/messages} & Get inter-agent messages for a run. \\
+\hline
+GET & \texttt{/api/incidents/geo/\{id\}} & Get geo-coded incidents for map rendering. \\
+\hline
+POST & \texttt{/api/auth/login} & User login. \\
+\hline
+POST & \texttt{/api/auth/register} & User registration. \\
+\hline
+GET & \texttt{/api/analytics/summary} & Analytics dashboard data. \\
+\hline
+GET & \texttt{/api/suggestions} & Smart strategy suggestions. \\
+\hline
+POST & \texttt{/api/ml/train} & Trigger ML model retraining. \\
+\hline
+GET & \texttt{/api/ml/status} & Get active model info. \\
+\hline
+POST & \texttt{/api/ml/predict} & One-off severity prediction. \\
+\hline
+GET & \texttt{/api/run/\{id\}/export/csv} & Download CSV report. \\
+\hline
+GET & \texttt{/api/run/\{id\}/export/pdf} & Download PDF report. \\
+\hline
+GET/POST & \texttt{/api/teams} & List or create/update rescue teams. \\
+\hline
+POST/GET & \texttt{/api/incidents/custom} & Create or list custom incidents. \\
+\hline
+WS & \texttt{/ws/simulation} & WebSocket for real-time updates. \\
+\hline
+\end{tabularx}
+\end{table}
+
+All API request and response bodies are validated by Pydantic models. The \texttt{POST /api/run} endpoint runs the simulation in a FastAPI \texttt{BackgroundTasks} coroutine so the HTTP response returns immediately with the run ID while the pipeline executes asynchronously.
+
+\section{Security Considerations}
+\label{sec:security}
+
+Security in this prototype is implemented at a basic level appropriate for a demonstration system:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{CORS}: The FastAPI middleware is configured with \texttt{allow\_origins=["*"]} for development convenience. In a production deployment, this would be restricted to the frontend's domain.
+
+    \item \textbf{Authentication}: Email and password are validated against the \texttt{users} table. Passwords are stored as plain text in this prototype. A production version would use bcrypt hashing and JWT tokens.
+
+    \item \textbf{Role-Based Access}: Admin endpoints (\texttt{/api/admin/*}) are designed for admin-role users. The current implementation checks roles on the frontend; server-side role enforcement would be added for production.
+
+    \item \textbf{Input Validation}: All incoming request bodies are validated by Pydantic, which rejects malformed or missing fields before the endpoint handler executes.
+
+    \item \textbf{SQL Injection Prevention}: All database queries use parameterized statements. No raw string interpolation is used in SQL queries.
+
+    \item \textbf{API Key Protection}: The Gemini API key is loaded from an environment variable (\texttt{GEMINI\_API\_KEY}), not hardcoded. The \texttt{.env} file is not committed to version control.
+\end{itemize}
+
+\section{Chapter Summary}
+\label{sec:ch5_summary}
+
+This chapter presented the system design from multiple perspectives. The three-tier architecture separates the React frontend, FastAPI backend, and SQLite database. Ten database tables support the full simulation lifecycle. Fifteen Python modules divide responsibilities cleanly across API handling, orchestration, agents, messaging, ML, routing, and reporting. The API layer exposes 19 REST endpoints and one WebSocket endpoint. Security is implemented at a prototype level with parameterized queries, Pydantic validation, and environment-variable-based API key management.

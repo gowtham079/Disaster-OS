@@ -1,0 +1,196 @@
+\documentclass[12pt,a4paper]{report}
+
+% ===== Page Geometry =====
+\usepackage[left=1.25in, right=1in, top=1in, bottom=1in]{geometry}
+
+% ===== Typography =====
+\usepackage{mathptmx}              % Times New Roman font
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+\onehalfspacing                    % 1.5 line spacing
+
+% ===== Mathematics =====
+\usepackage{amsmath, amssymb}
+
+% ===== Tables =====
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{multirow}
+
+% ===== Graphics =====
+\usepackage{graphicx}
+\usepackage{float}
+
+% ===== Code Listings =====
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{courier}               % Courier font for code
+
+% ===== Algorithms =====
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\makeatletter
+\@addtoreset{algorithm}{chapter}
+\makeatother
+\renewcommand{\thealgorithm}{\thechapter.\arabic{algorithm}}
+
+% ===== Captions =====
+\usepackage[font=small, labelfont=bf]{caption}
+
+% ===== Hyperlinks =====
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+% ===== Lists =====
+\usepackage{enumitem}
+
+% ===== Colors =====
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+% ===== Listing Styles =====
+\lstdefinestyle{codestyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codepurple}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codegreen},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single
+}
+
+\lstdefinestyle{pseudocode}{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    keepspaces=true,
+    frame=none,
+    backgroundcolor=\color{white},
+    numbers=none,
+    xleftmargin=0pt,
+    framexleftmargin=0pt
+}
+
+\lstset{style=codestyle}
+
+% ===== Chapter Heading Format =====
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\Large\bfseries\centering}
+  {\MakeUppercase{\chaptertitlename}\ \thechapter}{20pt}{\LARGE}
+\titlespacing*{\chapter}{0pt}{-20pt}{24pt}
+
+% ===========================================================================
+\begin{document}
+
+% ----- Title Page -----
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\LARGE\bfseries TACTICAL MULTI-AGENT DISASTER\\[0.4cm]
+MANAGEMENT AND DECISION\\[0.4cm]
+SUPPORT SYSTEM\par}
+\vspace{2cm}
+{\large A Project Report\par}
+\vspace{0.5cm}
+{\large Submitted in partial fulfillment of the requirements\\
+for the degree of\par}
+\vspace{0.5cm}
+{\large\bfseries Master of Computer Applications (MCA)\par}
+\vspace{2cm}
+{\large Maharaja Institute of Technology Mysore\par}
+\vspace{1cm}
+{\large 2026\par}
+\end{titlepage}
+
+% ----- Front Matter -----
+\pagenumbering{roman}
+
+\input{chapters/abstract}
+
+\tableofcontents
+\newpage
+
+\listoffigures
+\newpage
+
+\listoftables
+\newpage
+
+% ----- Main Matter -----
+\pagenumbering{arabic}
+
+\input{chapters/chapter1}
+\input{chapters/chapter2}
+\input{chapters/chapter3}
+\input{chapters/chapter4}
+\input{chapters/chapter5}
+\input{chapters/chapter6}
+\input{chapters/chapter7}
+\input{chapters/chapter8}
+\input{chapters/chapter9}
+
+% ----- References (IEEE Style) -----
+\addcontentsline{toc}{chapter}{References}
+\begin{thebibliography}{99}
+
+\bibitem{wooldridge2009}
+M.~Wooldridge, \textit{An Introduction to Multiagent Systems}, 2nd ed. Chichester, West Sussex: John Wiley \& Sons, 2009.
+
+\bibitem{breiman2001}
+L.~Breiman, ``Random Forests,'' \textit{Machine Learning}, vol.~45, no.~1, pp.~5--32, Oct. 2001.
+
+\bibitem{hart1968}
+P.~E.~Hart, N.~J.~Nilsson, and B.~Raphael, ``A Formal Basis for the Heuristic Determination of Minimum Cost Paths,'' \textit{IEEE Transactions on Systems Science and Cybernetics}, vol.~4, no.~2, pp.~100--107, Jul. 1968.
+
+\bibitem{fastapi2021}
+S.~Ram\'{i}rez, ``FastAPI,'' 2021. [Online]. Available: \url{https://fastapi.tiangolo.com/}. [Accessed: Jun. 2026].
+
+\bibitem{react2023}
+Meta Platforms, Inc., ``React -- A JavaScript Library for Building User Interfaces,'' 2023. [Online]. Available: \url{https://react.dev/}. [Accessed: Jun. 2026].
+
+\bibitem{sqlite2024}
+D.~R.~Hipp, ``SQLite,'' Hipp, Wyrick \& Company, Inc., 2024. [Online]. Available: \url{https://www.sqlite.org/}. [Accessed: Jun. 2026].
+
+\bibitem{scikit2011}
+F.~Pedregosa \textit{et al.}, ``Scikit-learn: Machine Learning in Python,'' \textit{Journal of Machine Learning Research}, vol.~12, pp.~2825--2830, Oct. 2011.
+
+\bibitem{leaflet2024}
+V.~Agafonkin, ``Leaflet -- An open-source JavaScript library for mobile-friendly interactive maps,'' 2024. [Online]. Available: \url{https://leafletjs.com/}. [Accessed: Jun. 2026].
+
+\bibitem{gemini2024}
+Google LLC, ``Gemini API Documentation,'' Google Cloud, Mountain View, CA, 2024. [Online]. Available: \url{https://ai.google.dev/}. [Accessed: Jun. 2026].
+
+\bibitem{pydantic2023}
+S.~Colvin, ``Pydantic -- Data validation using Python type annotations,'' 2023. [Online]. Available: \url{https://docs.pydantic.dev/}. [Accessed: Jun. 2026].
+
+\bibitem{reportlab2022}
+ReportLab Europe Ltd., ``ReportLab -- PDF Generation Library,'' London, UK, 2022. [Online]. Available: \url{https://www.reportlab.com/}. [Accessed: Jun. 2026].
+
+\bibitem{uvicorn2023}
+Encode, ``Uvicorn -- An ASGI web server for Python,'' 2023. [Online]. Available: \url{https://www.uvicorn.org/}. [Accessed: Jun. 2026].
+
+\bibitem{websocket2011}
+I.~Fette and A.~Melnikov, ``The WebSocket Protocol,'' \textit{RFC 6455}, Internet Engineering Task Force, Dec. 2011.
+
+\bibitem{haversine1984}
+R.~W.~Sinnott, ``Virtues of the Haversine,'' \textit{Sky and Telescope}, vol.~68, no.~2, p.~159, 1984.
+
+\end{thebibliography}
+
+% ----- Appendix -----
+\input{chapters/appendix}
+
+\end{document}

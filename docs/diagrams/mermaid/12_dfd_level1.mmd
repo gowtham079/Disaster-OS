@@ -1,0 +1,59 @@
+flowchart LR
+    OP((Operator))
+
+    P1[1.0 Authentication]
+    P2[2.0 Simulation Engine<br/>Orchestrator]
+    P3[3.0 Incident Detection]
+    P4[4.0 Resource Allocation]
+    P5[5.0 Evaluation]
+    P6[6.0 Analytics]
+    P7[7.0 Report Generator]
+    P8[8.0 Smart Suggestions]
+
+    D1[(D1 Users)]
+    D2[(D2 Simulation Runs)]
+    D3[(D3 Incidents)]
+    D4[(D4 Agent Logs)]
+    D5[(D5 Run Logs)]
+    D6[(D6 Run Metrics)]
+    D7[(D7 ML Models)]
+    D8[(D8 Input Dataset<br/>input_data.json)]
+
+    OP -->|credentials| P1
+    P1 -->|auth result| OP
+    P1 <-->|read / write| D1
+
+    OP -->|seed · strategy · start run| P2
+    P2 -->|run status · live updates| OP
+    P2 -->|create_run · complete_run| D2
+    P2 -->|read| D8
+    P2 --> P3
+    P3 --> P4
+    P4 --> P5
+
+    P3 -->|read model meta| D7
+    P3 -->|write incidents · agent_logs| D3
+    P3 -->|write| D4
+    P2 -->|write state transitions| D5
+    P4 -->|update routing · write| D3
+    P4 -->|write| D4
+    P5 -->|write| D4
+    P5 -->|write metrics| D6
+    P5 -->|complete_run| D2
+
+    OP -->|request summary| P6
+    P6 -->|analytics| OP
+    P6 -->|read| D2
+    P6 -->|read| D3
+    P6 -->|read| D6
+
+    OP -->|request export| P7
+    P7 -->|CSV / PDF| OP
+    P7 -->|read| D3
+    P7 -->|read| D6
+    P7 -->|read| D2
+
+    OP -->|request suggestions| P8
+    P8 -->|recommendations| OP
+    P8 -->|read| D2
+    P8 -->|read| D6

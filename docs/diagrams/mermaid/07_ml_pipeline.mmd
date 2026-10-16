@@ -1,0 +1,44 @@
+---
+title: Multi-Agent Disaster Management — Machine Learning Pipeline
+---
+flowchart TD
+    classDef dataNode fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef processNode fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#E65100
+    classDef modelNode fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20
+    classDef agentNode fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#4A148C
+    classDef storageNode fill:#ECEFF1,stroke:#546E7A,stroke-width:2px,color:#263238
+    classDef uiNode fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#880E4F
+
+  subgraph TRAINING["Offline Model Training"]
+    direction TB
+    T1["Historical / Synthetic Incident Data<br/><b>train_severity_model.py</b> · generate_training_data<br/><b>generate_data.py</b> · input_data.json<br/><b>custom_incidents</b> · indian_cities.json"]
+    T2["Feature Engineering<br/><b>feature_engineering.py</b> · extract_features<br/>13 features · disaster-type one-hot<br/>weather · population · infrastructure · time"]
+    T3["Data Preprocessing<br/>LabelEncoder · StandardScaler fit_transform<br/>train_test_split 80/20 · stratified"]
+    T4["Random Forest Model Training<br/>sklearn RandomForestClassifier<br/>GridSearchCV · 3-fold CV · f1_weighted"]
+    T5["Saved ML Model<br/>severity_model.joblib<br/>label_encoder.joblib · feature_scaler.joblib<br/>training_report.json · ml/models/"]
+
+    T1 --> T2 --> T3 --> T4 --> T5
+  end
+
+  subgraph RUNTIME["Runtime Inference & Delivery"]
+    direction TB
+    R0["Runtime Incident Input<br/>Orchestrator.load_data<br/>custom_incidents · input_data.json"]
+    R1["Severity Prediction<br/><b>SeverityPredictor.predict</b><br/>extract_features · scaler.transform<br/>RandomForestClassifier.predict<br/>low · medium · high"]
+    R2["Confidence Score<br/>max predict_proba<br/>per-class probabilities"]
+    R3["Incident Detection Agent<br/><b>IncidentDetectionAgent</b> · smart strategy<br/>ml_predicted_severity · ml_confidence<br/>priority · estimated_risk"]
+    R4["SQLite Database<br/><b>state_history.db</b><br/>incidents · agent_logs · ml_models<br/>save_incidents · save_ml_model_meta"]
+    R5["Dashboard<br/>React App · LiveMap · Inspector<br/>WebSocket STATE_TRANSITION<br/>CSV / PDF exports"]
+
+    R0 --> R3
+    R1 --> R2 --> R3 --> R4 --> R5
+  end
+
+  T5 ==>|load model artifacts| R1
+  R3 -.->|predict on incident| R1
+
+  class T1,R0 dataNode
+  class T2,T3,T4,R1,R2 processNode
+  class T5 modelNode
+  class R3 agentNode
+  class R4 storageNode
+  class R5 uiNode

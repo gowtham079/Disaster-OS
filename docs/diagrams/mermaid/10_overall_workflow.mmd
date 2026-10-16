@@ -1,0 +1,19 @@
+flowchart TD
+    USER([User]) --> LOGIN[Login<br/>POST /api/auth/login]
+    LOGIN --> DASH[React Dashboard<br/>App.jsx]
+    DASH --> STRAT[Select Strategy<br/>smart / baseline]
+    STRAT --> SEED[Enter Seed]
+    SEED --> START[Start Simulation<br/>POST /api/run]
+    START --> API[FastAPI Backend<br/>app.py]
+    API --> ORCH[Orchestrator<br/>orchestrator.py]
+    ORCH --> IDA[Incident Detection Agent]
+    IDA --> RAA[Resource Allocation Agent]
+    RAA --> RCA[Rescue Coordination Agent]
+    RCA --> EA[Evaluation Agent]
+    EA --> DB[(SQLite Database<br/>state_history.db)]
+    ORCH --> DB
+    DB --> ANALYTICS[Analytics Dashboard<br/>GET /api/analytics/summary]
+    DB --> LIVEMAP[Live Map<br/>LiveMap.jsx<br/>GET /api/incidents/geo]
+    DB --> REPORTS[Reports<br/>GET /api/run/id/export/csv<br/>GET /api/run/id/export/pdf]
+    ORCH -.->|WebSocket STATE_TRANSITION<br/>AGENT_MESSAGE| DASH
+    ORCH -.->|WebSocket| LIVEMAP

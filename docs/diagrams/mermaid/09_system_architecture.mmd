@@ -1,0 +1,87 @@
+---
+title: Overall System Architecture — Multi-Agent Disaster Management
+---
+flowchart TB
+    classDef presentation fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef application fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#E65100
+    classDef ml fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20
+    classDef data fill:#ECEFF1,stroke:#546E7A,stroke-width:2px,color:#263238
+
+    subgraph PL["Presentation Layer"]
+        direction TB
+        RD["React Dashboard<br/>App.jsx · simulation control<br/>inspector · settings · users"]
+        LM["Live Map<br/>LiveMap.jsx · react-leaflet<br/>incidents · teams · routes"]
+        AD["Analytics Dashboard<br/>dashboard tab · SVGLineChart<br/>SVGBarChart · CircularGauge"]
+    end
+
+    subgraph AL["Application Layer"]
+        direction TB
+        API["FastAPI Backend<br/>app.py · Uvicorn"]
+        REST["REST APIs<br/>/api/run · /api/analytics/summary<br/>/api/ml/* · /api/export/*"]
+        WS["WebSocket Manager<br/>ConnectionManager<br/>/ws/simulation"]
+        ORCH["Orchestrator<br/>orchestrator.py · state machine"]
+        MB["Message Bus<br/>message_bus.py<br/>publish · subscribe · retry"]
+        IDA["Incident Detection Agent"]
+        RAA["Resource Allocation Agent<br/>A* routing · rescue teams"]
+        RCA["Rescue Coordination Agent"]
+        EA["Evaluation Agent"]
+        RG["Report Generator<br/>report_generator.py<br/>CSV · PDF export"]
+        GEM["Gemini Decision Support<br/>gemini_service.py<br/>DecisionSupportAgent"]
+        SS["Smart Suggestions<br/>smart_suggestions.py"]
+    end
+
+    subgraph MLL["Machine Learning Layer"]
+        direction TB
+        FE["Feature Engineering<br/>feature_engineering.py<br/>extract_features · 13 features"]
+        RF["Random Forest Predictor<br/>predictor.py · SeverityPredictor<br/>severity · confidence · probabilities"]
+    end
+
+    subgraph DL["Data Layer"]
+        direction TB
+        SQL[("SQLite Database<br/>state_history.db<br/>runs · incidents · logs · metrics")]
+        MODELS["ML Models<br/>severity_model.joblib<br/>label_encoder · feature_scaler"]
+        JSON[("JSON Dataset<br/>input_data.json<br/>indian_cities.json")]
+    end
+
+    RD <-->|"HTTP REST"| REST
+    LM <-->|"GET /api/incidents/geo"| REST
+    AD <-->|"GET /api/analytics/summary"| REST
+    RD <-->|"WebSocket live events"| WS
+    LM <-->|"STATE_TRANSITION updates"| WS
+
+    REST --> API
+    WS --> API
+    API -->|"POST /api/run"| ORCH
+    API --> RG
+    API --> SS
+    API --> SQL
+
+    ORCH --> MB
+    ORCH --> JSON
+    ORCH --> SQL
+
+    MB --> IDA
+    IDA --> RAA
+    RAA --> RCA
+    RCA --> EA
+
+    IDA --> FE
+    FE --> RF
+    RF --> MODELS
+    IDA -.->|"smart strategy"| RF
+
+    EA --> GEM
+    RG --> SQL
+    SS --> SQL
+
+    MB -->|"save_agent_message"| SQL
+    ORCH -->|"save_incidents · agent_logs<br/>run_metrics · run_logs"| SQL
+
+    WS -->|"AGENT_MESSAGE<br/>STATE_TRANSITION"| RD
+    WS --> LM
+    WS --> AD
+
+    class RD,LM,AD presentation
+    class API,REST,WS,ORCH,MB,IDA,RAA,RCA,EA,RG,GEM,SS application
+    class FE,RF ml
+    class SQL,MODELS,JSON data

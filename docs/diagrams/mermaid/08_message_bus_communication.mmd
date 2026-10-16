@@ -1,0 +1,65 @@
+---
+title: Message Bus Communication — Multi-Agent Disaster Management
+---
+flowchart TB
+    classDef orch fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef bus fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#E65100
+    classDef agent fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#4A148C
+    classDef infra fill:#ECEFF1,stroke:#546E7A,stroke-width:2px,color:#263238
+    classDef mech fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20
+
+    ORCH["Orchestrator<br/>orchestrator.py<br/>publish · process_next loop<br/>wrapper callbacks · state machine"]
+
+    subgraph BUS["Message Bus — message_bus.py"]
+        direction TB
+        REG["Subscribe<br/>register_agent<br/>4 agent handlers"]
+        PUB["Publish<br/>UUID message_id · priority queue<br/>history · to_dict"]
+        PROC["Route & Dispatch<br/>process_next · process_all<br/>target receiver or BROADCAST"]
+
+        subgraph MECH["Bus Mechanisms"]
+            LOG["Logging<br/>Python logger · AgentHealth telemetry<br/>save_agent_message · in-memory history"]
+            RETRY["Retry Mechanism<br/>max_retries = 3 · retry_delay = 0.01s<br/>re-queue on handler exception · drop after max"]
+            ACK["Implicit Acknowledgement<br/>success = handler returns reply dict<br/>failure = retry then drop<br/>no explicit ACK/NACK protocol"]
+        end
+
+        REG --> PROC
+        PUB --> LOG
+        PUB --> PROC
+        PROC --> RETRY
+        PROC --> ACK
+    end
+
+    IDA["Incident Detection Agent<br/>sub: TRIGGER_INCIDENT_DETECTION<br/>pub: INCIDENT_REPORTED"]
+    RAA["Resource Allocation Agent<br/>sub: INCIDENT_REPORTED<br/>pub: RESOURCE_ALLOCATED"]
+    RCA["Rescue Coordination Agent<br/>sub: RESOURCE_ALLOCATED<br/>pub: RESCUE_IN_PROGRESS"]
+    EA["Evaluation Agent<br/>sub: RESCUE_IN_PROGRESS<br/>pub: SIMULATION_COMPLETED"]
+
+    DB[("SQLite Database<br/>agent_messages · agent_logs<br/>incidents · run_metrics · run_logs")]
+    WS["WebSocket Manager<br/>ConnectionManager · /ws/simulation<br/>broadcast_sync"]
+    DASH["Analytics Dashboard<br/>React App.jsx · live feed<br/>history · charts"]
+
+    ORCH -->|"① publish<br/>TRIGGER_INCIDENT_DETECTION"| PUB
+    ORCH -->|"register wrapped handlers"| REG
+
+    PROC -->|"② route"| IDA
+    IDA -->|"③ publish reply<br/>INCIDENT_REPORTED"| PUB
+    PROC --> RAA
+    RAA -->|"RESOURCE_ALLOCATED"| PUB
+    PROC --> RCA
+    RCA -->|"RESCUE_IN_PROGRESS"| PUB
+    PROC --> EA
+    EA -->|"SIMULATION_COMPLETED"| PUB
+
+    PUB -->|"persist on every publish"| DB
+    ORCH -->|"wrapper callbacks<br/>save_incidents · save_agent_log<br/>save_run_metrics · complete_run"| DB
+
+    PUB -->|"type: AGENT_MESSAGE"| WS
+    ORCH -->|"type: STATE_TRANSITION"| WS
+    WS --> DASH
+    DB -->|"GET /api/analytics/summary<br/>GET /api/run/id/messages"| DASH
+
+    class ORCH orch
+    class REG,PUB,PROC bus
+    class LOG,RETRY,ACK mech
+    class IDA,RAA,RCA,EA agent
+    class DB,WS,DASH infra

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Agent Disaster Management - Project Diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { font-family: 'Times New Roman', serif; margin: 24px; background: #f5f0e8; color: #1a1a1a; }
+    h1 { color: #1e4a8a; font-size: 28px; border-bottom: 3px solid #1e4a8a; padding-bottom: 8px; }
+    h2 { color: #8b1a1a; font-size: 22px; margin-top: 40px; page-break-before: always; }
+    h2:first-of-type { page-break-before: avoid; }
+    .slide { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 24px; margin: 24px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .mermaid { display: flex; justify-content: center; overflow-x: auto; }
+    ul { line-height: 1.8; }
+    .note { font-size: 14px; color: #555; margin-top: 12px; }
+    @media print { h2 { page-break-before: always; } .slide { box-shadow: none; border: none; } }
+  </style>
+</head>
+<body>
+  <h1>Multi-Agent Disaster Management Simulator</h1>
+  <p><strong>Project Diagrams</strong> — Use browser Print → Save as PDF or screenshot each slide for PPT.</p>
+
+  <div class="slide">
+    <h2>6. DATABASE DESIGN (ER DIAGRAM)</h2>
+    <div class="mermaid">
+erDiagram
+    USERS ||--o{ SIMULATION_RUNS : triggers
+    SIMULATION_RUNS ||--o{ INCIDENTS : contains
+    SIMULATION_RUNS ||--o{ AGENT_LOGS : records
+    SIMULATION_RUNS ||--|| RUN_METRICS : produces
+    SIMULATION_RUNS ||--o{ RUN_LOGS : tracks
+
+    USERS {
+        int user_id PK
+        varchar name
+        varchar email
+        varchar password
+        varchar role
+    }
+    SIMULATION_RUNS {
+        text run_id PK
+        int user_id FK
+        int seed
+        varchar strategy
+        varchar status
+        datetime started_at
+        datetime completed_at
+    }
+    INCIDENTS {
+        int incident_id PK
+        text run_id FK
+        varchar location
+        varchar severity
+        int people_affected
+        varchar disaster_type
+        varchar priority
+        varchar estimated_risk
+    }
+    AGENT_LOGS {
+        int log_id PK
+        text run_id FK
+        varchar agent_name
+        varchar state
+        text output_json
+        datetime created_at
+    }
+    RUN_METRICS {
+        int metric_id PK
+        text run_id FK
+        int total_incidents
+        int total_affected
+        int total_lives_saved
+        varchar overall_efficiency
+        varchar avg_response_time
+        varchar resource_utilization
+        varchar status
+    }
+    RUN_LOGS {
+        int id PK
+        text run_id FK
+        text state
+        text payload
+        datetime timestamp
+    }
+    </div>
+    <ul>
+      <li><strong>Users</strong> — Operators and Admins</li>
+      <li><strong>Simulation_Runs</strong> — Each disaster simulation execution</li>
+      <li><strong>Incidents</strong> — Disaster events processed per run</li>
+      <li><strong>Agent_Logs</strong> — Per-agent output at each stage</li>
+      <li><strong>Run_Metrics</strong> — Final KPIs (lives saved, efficiency)</li>
+      <li><strong>Run_Logs</strong> — State-machine transition audit trail</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>7. OVERALL SYSTEM ARCHITECTURE</h2>
+    <div class="mermaid">
+---
+title: Overall System Architecture — Multi-Agent Disaster Management
+---
+flowchart TB
+    classDef presentation fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef application fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#E65100
+    classDef ml fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20
+    classDef data fill:#ECEFF1,stroke:#546E7A,stroke-width:2px,color:#263238
+
+    subgraph PL["Presentation Layer"]
+        direction TB
+        RD["React Dashboard<br/>App.jsx · simulation control<br/>inspector · settings · users"]
+        LM["Live Map<br/>LiveMap.jsx · react-leaflet<br/>incidents · teams · routes"]
+        AD["Analytics Dashboard<br/>dashboard tab · SVGLineChart<br/>SVGBarChart · CircularGauge"]
+    end
+
+    subgraph AL["Application Layer"]
+        direction TB
+        API["FastAPI Backend<br/>app.py · Uvicorn"]
+        REST["REST APIs<br/>/api/run · /api/analytics/summary<br/>/api/ml/* · /api/export/*"]
+        WS["WebSocket Manager<br/>ConnectionManager<br/>/ws/simulation"]
+        ORCH["Orchestrator<br/>orchestrator.py · state machine"]
+        MB["Message Bus<br/>message_bus.py<br/>publish · subscribe · retry"]
+        IDA["Incident Detection Agent"]
+        RAA["Resource Allocation Agent<br/>A* routing · rescue teams"]
+        RCA["Rescue Coordination Agent"]
+        EA["Evaluation Agent"]
+        RG["Report Generator<br/>report_generator.py<br/>CSV · PDF export"]
+        GEM["Gemini Decision Support<br/>gemini_service.py<br/>DecisionSupportAgent"]
+        SS["Smart Suggestions<br/>smart_suggestions.py"]
+    end
+
+    subgraph MLL["Machine Learning Layer"]
+        direction TB
+        FE["Feature Engineering<br/>feature_engineering.py<br/>extract_features · 13 features"]
+        RF["Random Forest Predictor<br/>predictor.py · SeverityPredictor<br/>severity · confidence · probabilities"]
+    end
+
+    subgraph DL["Data Layer"]
+        direction TB
+        SQL[("SQLite Database<br/>state_history.db<br/>runs · incidents · logs · metrics")]
+        MODELS["ML Models<br/>severity_model.joblib<br/>label_encoder · feature_scaler"]
+        JSON[("JSON Dataset<br/>input_data.json<br/>indian_cities.json")]
+    end
+
+    RD <-->|"HTTP REST"| REST
+    LM <-->|"GET /api/incidents/geo"| REST
+    AD <-->|"GET /api/analytics/summary"| REST
+    RD <-->|"WebSocket live events"| WS
+    LM <-->|"STATE_TRANSITION updates"| WS
+
+    REST --> API
+    WS --> API
+    API -->|"POST /api/run"| ORCH
+    API --> RG
+    API --> SS
+    API --> SQL
+
+    ORCH --> MB
+    ORCH --> JSON
+    ORCH --> SQL
+
+    MB --> IDA
+    IDA --> RAA
+    RAA --> RCA
+    RCA --> EA
+
+    IDA --> FE
+    FE --> RF
+    RF --> MODELS
+    IDA -.->|"smart strategy"| RF
+
+    EA --> GEM
+    RG --> SQL
+    SS --> SQL
+
+    MB -->|"save_agent_message"| SQL
+    ORCH -->|"save_incidents · agent_logs<br/>run_metrics · run_logs"| SQL
+
+    WS -->|"AGENT_MESSAGE<br/>STATE_TRANSITION"| RD
+    WS --> LM
+    WS --> AD
+
+    class RD,LM,AD presentation
+    class API,REST,WS,ORCH,MB,IDA,RAA,RCA,EA,RG,GEM,SS application
+    class FE,RF ml
+    class SQL,MODELS,JSON data
+    </div>
+    <p class="note">Technologies: React, FastAPI, Python Agents, Random Forest, SQLite, WebSocket, Gemini API, Uvicorn</p>
+  </div>
+
+  <div class="slide">
+    <h2>8. USE CASE DIAGRAM (Operator Module)</h2>
+    <div class="mermaid">
+flowchart TB
+    OP((Operator))
+    subgraph OperatorModule["Operator Module"]
+        UC1[User Login]
+        UC2[Start Simulation Run]
+        UC3[Select Strategy Smart/Baseline]
+        UC4[View State History]
+        UC5[Track Run Status]
+        UC6[View Analytics Dashboard]
+        UC7[Get Smart Suggestions]
+        UC8[Calculate Rescue Metrics]
+    end
+    OP --> UC1
+    OP --> UC2
+    OP --> UC3
+    OP --> UC4
+    OP --> UC5
+    OP --> UC6
+    OP --> UC7
+    UC2 -.->|include| UC8
+    </div>
+    <ul>
+      <li>User Login</li>
+      <li>Start Simulation Run</li>
+      <li>Select Strategy (Smart / Baseline)</li>
+      <li>View State Transition History</li>
+      <li>Track Run Status</li>
+      <li>View Analytics Dashboard</li>
+      <li>Get Smart Suggestions</li>
+      <li>Calculate Rescue Metrics</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>9. USE CASE DIAGRAM (Admin Module)</h2>
+    <div class="mermaid">
+flowchart TB
+    AD((Admin))
+    subgraph AdminModule["Admin Module"]
+        A1[Manage Users]
+        A2[Manage Disaster Data]
+        A3[View All Simulation Runs]
+        A4[View Performance Reports]
+        A5[Compare Smart vs Baseline]
+    end
+    AD --> A1
+    AD --> A2
+    AD --> A3
+    AD --> A4
+    AD --> A5
+    </div>
+    <ul>
+      <li>Manage Users</li>
+      <li>Manage Disaster Input Data</li>
+      <li>View All Simulation Runs</li>
+      <li>View Performance Reports</li>
+      <li>Compare Smart vs Baseline Strategy</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>10. SEQUENCE DIAGRAM</h2>
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+  participant User
+  participant Frontend as React Dashboard
+  participant Backend as FastAPI Backend
+  participant DB as SQLite Database
+  participant Smart as Smart Suggestion Module
+
+  rect rgb(230,245,255)
+    Note over User,DB: User Authentication
+    User->>Frontend: Enter credentials
+    Frontend->>Backend: POST /api/health (verify)
+    Backend-->>Frontend: API Online
+  end
+
+  rect rgb(255,245,230)
+    Note over User,DB: Simulation Run
+    User->>Frontend: Set seed + strategy, Start Run
+    Frontend->>Backend: POST /api/run
+    Backend->>DB: Create simulation_run record
+    Backend->>Backend: Orchestrator runs agents
+    Backend->>DB: Save incidents, agent_logs, run_logs
+    Backend->>DB: Save run_metrics
+    Backend-->>Frontend: run_id returned
+  end
+
+  rect rgb(230,255,230)
+    Note over User,Smart: Smart Suggestions
+    Frontend->>Backend: GET /api/suggestions
+    Backend->>Smart: Analyze past runs
+    Smart->>DB: Query metrics & incidents
+    Smart-->>Backend: Recommendations
+    Backend-->>Frontend: Strategy + seed suggestions
+  end
+
+  rect rgb(245,230,255)
+    Note over User,DB: Status & Reports
+    Frontend->>Backend: GET /api/run/{id}/status
+    Backend->>DB: Fetch run_logs
+    Backend-->>Frontend: RUNNING / COMPLETED
+    Frontend->>Backend: GET /api/analytics/summary
+    Backend-->>Frontend: Dashboard metrics
+  end
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>11. MACHINE LEARNING PIPELINE</h2>
+    <div class="mermaid">
+---
+title: Multi-Agent Disaster Management — Machine Learning Pipeline
+---
+flowchart TD
+    classDef dataNode fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef processNode fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#E65100
+    classDef modelNode fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20
+    classDef agentNode fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#4A148C
+    classDef storageNode fill:#ECEFF1,stroke:#546E7A,stroke-width:2px,color:#263238
+    classDef uiNode fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#880E4F
+
+  subgraph TRAINING["Offline Model Training"]
+    direction TB
+    T1["Historical / Synthetic Incident Data<br/><b>train_severity_model.py</b> · generate_training_data<br/><b>generate_data.py</b> · input_data.json<br/><b>custom_incidents</b> · indian_cities.json"]
+    T2["Feature Engineering<br/><b>feature_engineering.py</b> · extract_features<br/>13 features · disaster-type one-hot<br/>weather · population · infrastructure · time"]
+    T3["Data Preprocessing<br/>LabelEncoder · StandardScaler fit_transform<br/>train_test_split 80/20 · stratified"]
+    T4["Random Forest Model Training<br/>sklearn RandomForestClassifier<br/>GridSearchCV · 3-fold CV · f1_weighted"]
+    T5["Saved ML Model<br/>severity_model.joblib<br/>label_encoder.joblib · feature_scaler.joblib<br/>training_report.json · ml/models/"]
+
+    T1 --> T2 --> T3 --> T4 --> T5
+  end
+
+  subgraph RUNTIME["Runtime Inference & Delivery"]
+    direction TB
+    R0["Runtime Incident Input<br/>Orchestrator.load_data<br/>custom_incidents · input_data.json"]
+    R1["Severity Prediction<br/><b>SeverityPredictor.predict</b><br/>extract_features · scaler.transform<br/>RandomForestClassifier.predict<br/>low · medium · high"]
+    R2["Confidence Score<br/>max predict_proba<br/>per-class probabilities"]
+    R3["Incident Detection Agent<br/><b>IncidentDetectionAgent</b> · smart strategy<br/>ml_predicted_severity · ml_confidence<br/>priority · estimated_risk"]
+    R4["SQLite Database<br/><b>state_history.db</b><br/>incidents · agent_logs · ml_models<br/>save_incidents · save_ml_model_meta"]
+    R5["Dashboard<br/>React App · LiveMap · Inspector<br/>WebSocket STATE_TRANSITION<br/>CSV / PDF exports"]
+
+    R0 --> R3
+    R1 --> R2 --> R3 --> R4 --> R5
+  end
+
+  T5 ==>|load model artifacts| R1
+  R3 -.->|predict on incident| R1
+
+  class T1,R0 dataNode
+  class T2,T3,T4,R1,R2 processNode
+  class T5 modelNode
+  class R3 agentNode
+  class R4 storageNode
+  class R5 uiNode
+    </div>
+    <ul>
+      <li><strong>Training</strong> — Synthetic data → feature engineering → preprocessing → Random Forest (GridSearchCV)</li>
+      <li><strong>Inference</strong> — Saved model → severity prediction → confidence score → Incident Detection Agent</li>
+      <li><strong>Persistence</strong> — SQLite stores ML fields; React dashboard displays run state and logs</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>12. MESSAGE BUS COMMUNICATION</h2>
+    <div class="mermaid">
+---
+title: Message Bus Communication — Multi-Agent Disaster Management
+---
+flowchart TB
+    classDef orch fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef bus fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#E65100
+    classDef agent fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#4A148C
+    classDef infra fill:#ECEFF1,stroke:#546E7A,stroke-width:2px,color:#263238
+    classDef mech fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20
+
+    ORCH["Orchestrator<br/>orchestrator.py<br/>publish · process_next loop<br/>wrapper callbacks · state machine"]
+
+    subgraph BUS["Message Bus — message_bus.py"]
+        direction TB
+        REG["Subscribe<br/>register_agent<br/>4 agent handlers"]
+        PUB["Publish<br/>UUID message_id · priority queue<br/>history · to_dict"]
+        PROC["Route & Dispatch<br/>process_next · process_all<br/>target receiver or BROADCAST"]
+
+        subgraph MECH["Bus Mechanisms"]
+            LOG["Logging<br/>Python logger · AgentHealth telemetry<br/>save_agent_message · in-memory history"]
+            RETRY["Retry Mechanism<br/>max_retries = 3 · retry_delay = 0.01s<br/>re-queue on handler exception · drop after max"]
+            ACK["Implicit Acknowledgement<br/>success = handler returns reply dict<br/>failure = retry then drop<br/>no explicit ACK/NACK protocol"]
+        end
+
+        REG --> PROC
+        PUB --> LOG
+        PUB --> PROC
+        PROC --> RETRY
+        PROC --> ACK
+    end
+
+    IDA["Incident Detection Agent<br/>sub: TRIGGER_INCIDENT_DETECTION<br/>pub: INCIDENT_REPORTED"]
+    RAA["Resource Allocation Agent<br/>sub: INCIDENT_REPORTED<br/>pub: RESOURCE_ALLOCATED"]
+    RCA["Rescue Coordination Agent<br/>sub: RESOURCE_ALLOCATED<br/>pub: RESCUE_IN_PROGRESS"]
+    EA["Evaluation Agent<br/>sub: RESCUE_IN_PROGRESS<br/>pub: SIMULATION_COMPLETED"]
+
+    DB[("SQLite Database<br/>agent_messages · agent_logs<br/>incidents · run_metrics · run_logs")]
+    WS["WebSocket Manager<br/>ConnectionManager · /ws/simulation<br/>broadcast_sync"]
+    DASH["Analytics Dashboard<br/>React App.jsx · live feed<br/>history · charts"]
+
+    ORCH -->|"① publish<br/>TRIGGER_INCIDENT_DETECTION"| PUB
+    ORCH -->|"register wrapped handlers"| REG
+
+    PROC -->|"② route"| IDA
+    IDA -->|"③ publish reply<br/>INCIDENT_REPORTED"| PUB
+    PROC --> RAA
+    RAA -->|"RESOURCE_ALLOCATED"| PUB
+    PROC --> RCA
+    RCA -->|"RESCUE_IN_PROGRESS"| PUB
+    PROC --> EA
+    EA -->|"SIMULATION_COMPLETED"| PUB
+
+    PUB -->|"persist on every publish"| DB
+    ORCH -->|"wrapper callbacks<br/>save_incidents · save_agent_log<br/>save_run_metrics · complete_run"| DB
+
+    PUB -->|"type: AGENT_MESSAGE"| WS
+    ORCH -->|"type: STATE_TRANSITION"| WS
+    WS --> DASH
+    DB -->|"GET /api/analytics/summary<br/>GET /api/run/id/messages"| DASH
+
+    class ORCH orch
+    class REG,PUB,PROC bus
+    class LOG,RETRY,ACK mech
+    class IDA,RAA,RCA,EA agent
+    class DB,WS,DASH infra
+    </div>
+    <ul>
+      <li><strong>Publish</strong> — Orchestrator triggers; agents auto-publish reply dicts via handler returns</li>
+      <li><strong>Subscribe</strong> — register_agent routes messages by receiver name and message_type</li>
+      <li><strong>Logging</strong> — SQLite agent_messages + WebSocket AGENT_MESSAGE + orchestrator STATE_TRANSITION</li>
+      <li><strong>Retry</strong> — Up to 3 retries on handler failure; implicit success when handler returns without exception</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>5. DATA FLOW DIAGRAM (Level 0)</h2>
+    <div class="mermaid">
+flowchart LR
+    OP[Operator] -->|seed, strategy| UI[React Dashboard]
+    UI -->|POST /api/run| API[FastAPI Backend]
+    API -->|read| JSON[(input_data.json)]
+    API --> ORCH[Orchestrator]
+    ORCH --> AG1[Incident Agent]
+    ORCH --> AG2[Allocation Agent]
+    ORCH --> AG3[Rescue Agent]
+    ORCH --> AG4[Evaluation Agent]
+    ORCH -->|write| DB[(SQLite DB)]
+  SMART[Smart Module] -->|read metrics| DB
+  UI -->|GET suggestions| SMART
+  SMART -->|recommendations| UI
+  UI -->|GET history, analytics| API
+  API -->|read| DB
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>13. OVERALL WORKFLOW</h2>
+    <div class="mermaid">
+flowchart TD
+    USER([User]) --> LOGIN[Login<br/>POST /api/auth/login]
+    LOGIN --> DASH[React Dashboard<br/>App.jsx]
+    DASH --> STRAT[Select Strategy<br/>smart / baseline]
+    STRAT --> SEED[Enter Seed]
+    SEED --> START[Start Simulation<br/>POST /api/run]
+    START --> API[FastAPI Backend<br/>app.py]
+    API --> ORCH[Orchestrator<br/>orchestrator.py]
+    ORCH --> IDA[Incident Detection Agent]
+    IDA --> RAA[Resource Allocation Agent]
+    RAA --> RCA[Rescue Coordination Agent]
+    RCA --> EA[Evaluation Agent]
+    EA --> DB[(SQLite Database<br/>state_history.db)]
+    ORCH --> DB
+    DB --> ANALYTICS[Analytics Dashboard<br/>GET /api/analytics/summary]
+    DB --> LIVEMAP[Live Map<br/>LiveMap.jsx<br/>GET /api/incidents/geo]
+    DB --> REPORTS[Reports<br/>GET /api/run/id/export/csv<br/>GET /api/run/id/export/pdf]
+    ORCH -.->|WebSocket STATE_TRANSITION<br/>AGENT_MESSAGE| DASH
+    ORCH -.->|WebSocket| LIVEMAP
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>14. ACTIVITY DIAGRAM</h2>
+    <div class="mermaid">
+flowchart TD
+    START([Start]) --> LOGIN[Login]
+    LOGIN --> VALID{Valid Login?}
+    VALID -->|No| LOGIN
+    VALID -->|Yes| CONFIG[Configure Simulation]
+    CONFIG --> STRATEGY[Select Strategy<br/>smart / baseline]
+    STRATEGY --> SEED[Enter Seed]
+    SEED --> RUN[Run Simulation<br/>POST /api/run]
+    RUN --> INIT[Initialize Orchestrator]
+    INIT --> LOAD[Load Incident Dataset<br/>input_data.json / custom_incidents]
+    LOAD --> DETECT[Incident Detection]
+    DETECT --> ML{Smart strategy<br/>and ML model available?}
+    ML -->|Yes| PREDICT[Severity Prediction<br/>Random Forest]
+    ML -->|No| RULES[Rule-based Priority]
+    PREDICT --> ALLOC[Resource Allocation]
+    RULES --> ALLOC
+    ALLOC --> RESCUE[Rescue Coordination]
+    RESCUE --> EVAL[Evaluation]
+    EVAL --> METRICS[Save Metrics<br/>save_run_metrics]
+    METRICS --> UPDATEDB[Update Database<br/>incidents · agent_logs · run_logs]
+    UPDATEDB --> COMPLETE[complete_run]
+    COMPLETE --> REPORTS[Generate Reports<br/>CSV / PDF]
+    REPORTS --> DISPLAY[Display Dashboard<br/>Analytics · Live Map]
+    DISPLAY --> END([End])
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>15. DATA FLOW DIAGRAM (Level 1)</h2>
+    <div class="mermaid">
+flowchart LR
+    OP((Operator))
+
+    P1[1.0 Authentication]
+    P2[2.0 Simulation Engine<br/>Orchestrator]
+    P3[3.0 Incident Detection]
+    P4[4.0 Resource Allocation]
+    P5[5.0 Evaluation]
+    P6[6.0 Analytics]
+    P7[7.0 Report Generator]
+    P8[8.0 Smart Suggestions]
+
+    D1[(D1 Users)]
+    D2[(D2 Simulation Runs)]
+    D3[(D3 Incidents)]
+    D4[(D4 Agent Logs)]
+    D5[(D5 Run Logs)]
+    D6[(D6 Run Metrics)]
+    D7[(D7 ML Models)]
+    D8[(D8 Input Dataset<br/>input_data.json)]
+
+    OP -->|credentials| P1
+    P1 -->|auth result| OP
+    P1 <-->|read / write| D1
+
+    OP -->|seed · strategy · start run| P2
+    P2 -->|run status · live updates| OP
+    P2 -->|create_run · complete_run| D2
+    P2 -->|read| D8
+    P2 --> P3
+    P3 --> P4
+    P4 --> P5
+
+    P3 -->|read model meta| D7
+    P3 -->|write incidents · agent_logs| D3
+    P3 -->|write| D4
+    P2 -->|write state transitions| D5
+    P4 -->|update routing · write| D3
+    P4 -->|write| D4
+    P5 -->|write| D4
+    P5 -->|write metrics| D6
+    P5 -->|complete_run| D2
+
+    OP -->|request summary| P6
+    P6 -->|analytics| OP
+    P6 -->|read| D2
+    P6 -->|read| D3
+    P6 -->|read| D6
+
+    OP -->|request export| P7
+    P7 -->|CSV / PDF| OP
+    P7 -->|read| D3
+    P7 -->|read| D6
+    P7 -->|read| D2
+
+    OP -->|request suggestions| P8
+    P8 -->|recommendations| OP
+    P8 -->|read| D2
+    P8 -->|read| D6
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>16. DATABASE INTERACTION DIAGRAM</h2>
+    <div class="mermaid">
+flowchart TD
+    DASH[React Dashboard<br/>App.jsx]
+    API[FastAPI Backend<br/>app.py]
+    ORCH[Orchestrator<br/>orchestrator.py]
+    DB[(SQLite Database<br/>state_history.db)]
+
+    DASH -->|"POST /api/run"| API
+    API -->|"create Orchestrator"| ORCH
+    ORCH -->|"WRITE create_run()"| DB
+    ORCH -->|"WRITE save_incidents()"| DB
+    ORCH -->|"WRITE save_agent_log()"| DB
+    ORCH -->|"WRITE log_transition()<br/>run_logs"| DB
+    ORCH -->|"WRITE save_run_metrics()"| DB
+    ORCH -->|"WRITE complete_run()"| DB
+
+    DASH -->|"GET /api/analytics/summary<br/>READ Fetch Analytics"| API
+    API -->|"READ get_analytics_summary()"| DB
+
+    DASH -->|"GET /api/run/id/history<br/>READ Fetch Run Logs"| API
+    API -->|"READ get_run_history()"| DB
+
+    DASH -->|"GET /api/run/id/incidents<br/>GET /api/incidents/geo<br/>READ Fetch Incidents"| API
+    API -->|"READ get_incidents_by_run()<br/>get_incidents_with_geo()"| DB
+
+    DASH -->|"GET /api/run/id/export/csv<br/>GET /api/run/id/export/pdf<br/>READ Fetch Reports"| API
+    API -->|"READ report_generator<br/>incidents · metrics"| DB
+
+    DASH -->|"GET /api/run/id/messages<br/>READ Fetch Agent Messages"| API
+    API -->|"READ get_agent_messages()"| DB
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+  </script>
+</body>
+</html>

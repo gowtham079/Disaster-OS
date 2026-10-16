@@ -1,0 +1,99 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Background}
+\label{sec:background}
+
+India faces a wide spectrum of natural disasters every year. Floods in Assam and Bihar, earthquakes along the Himalayan belt, cyclones along the eastern coastline, and forest fires in Uttarakhand are not hypothetical scenarios---they are recurring events. According to government estimates, floods alone account for nearly 75\% of the total damage caused by natural disasters in the country, and the affected population in any single year often runs into tens of millions.
+
+Emergency operations centers (EOCs) coordinate the response to these events. Their job involves receiving incident reports, classifying severity, dispatching rescue teams, and tracking outcomes. Most of this coordination still happens manually: phone calls between district collectors and NDRF units, spreadsheets listing available ambulances, and paper-based logs that are difficult to audit after the fact. When multiple incidents occur simultaneously---as they often do during monsoon season---this manual process breaks down. Teams get dispatched to the wrong locations, severity is misjudged because field reports are incomplete, and there is no systematic way to evaluate whether resources were used efficiently.
+
+Software agents offer a way to bring structure to this chaos. An agent, in the multi-agent systems sense, is a software entity that perceives its environment, makes decisions based on its internal rules, and acts on those decisions. Multiple agents can divide a complex task among themselves. One agent detects incidents, another allocates resources, a third coordinates the rescue, and a fourth evaluates the outcome. By giving each agent a well-defined role and connecting them through a communication channel, the overall system becomes modular, testable, and reproducible.
+
+This project builds such a multi-agent system specifically for disaster management scenarios in India. It is not a production deployment---it is a simulation platform that models how agents would coordinate a disaster response, with real geographic data, machine learning-based severity classification, graph-based route optimization, and generative AI explanations.
+
+\section{Motivation}
+\label{sec:motivation}
+
+Three practical problems motivated this project.
+
+The first is \textbf{inconsistent severity assessment}. When a disaster report comes in, different operators may assign different severity levels based on their experience, fatigue level, or the information available to them at the time. A flood affecting 300 people in a densely populated area with poor infrastructure is objectively more severe than one affecting 30 people in a well-connected city, but this distinction is not always captured when a human operator is fielding dozens of calls per hour. A machine learning model, trained on features like disaster type, rainfall, wind speed, population density, and infrastructure quality, can standardize this assessment.
+
+The second problem is \textbf{poor routing}. Rescue teams need to reach incident locations quickly, and the fastest route is not always the shortest one on a map. Roads may be blocked by debris, bridges may be washed out, or certain highways may be congested. An A* search over a graph of connected cities can compute the optimal path while accounting for such blockages, and can provide an estimated time of arrival that dispatch operators can use for planning.
+
+The third problem is \textbf{lack of auditability}. After a disaster response operation concludes, it is difficult to answer questions like: ``Why was this team sent to that location instead of the closer one?'' or ``What was the total rescue efficiency across all incidents?'' Without a systematic log, these questions go unanswered. A system that records every state transition, every agent decision, and every inter-agent message in a database provides the raw material for after-action reviews.
+
+These three concerns---severity assessment, routing, and auditability---are the core problems this project addresses.
+
+\section{Problem Statement}
+\label{sec:problem_statement}
+
+Design and implement a web-based simulation platform in which multiple autonomous software agents coordinate a disaster response pipeline. The system must classify incident severity using machine learning, optimize rescue team routing using graph search algorithms, generate human-readable explanations for dispatch decisions using a generative AI service, and present the entire simulation through an interactive real-time dashboard with persistent data storage and exportable reports.
+
+\section{Objectives}
+\label{sec:objectives}
+
+The project has the following specific objectives:
+
+\begin{enumerate}[leftmargin=*]
+    \item Develop four specialized software agents---Incident Detection, Resource Allocation, Rescue Coordination, and Evaluation---each encapsulating a distinct responsibility in the disaster response pipeline.
+
+    \item Implement a centralized message bus with priority queuing, retry logic, and health monitoring to manage all inter-agent communication.
+
+    \item Train a Random Forest classifier on synthetic disaster data to predict incident severity from environmental and demographic features.
+
+    \item Build an A* route optimization solver over a weighted graph of Indian highway connections, using the Haversine formula for distance heuristics.
+
+    \item Integrate Google Gemini API for generating structured tactical explanations, with a local rule-based fallback for offline operation.
+
+    \item Create a FastAPI backend with SQLite persistence that records simulation runs, agent logs, incidents, metrics, and inter-agent messages.
+
+    \item Develop a React frontend with real-time WebSocket updates, an interactive Leaflet map, analytics charts, and PDF/CSV report export functionality.
+
+    \item Compare smart (ML-driven, A*-routed) strategy outcomes against a baseline allocation strategy to demonstrate measurable improvement.
+\end{enumerate}
+
+\section{Scope}
+\label{sec:scope}
+
+The scope of this project covers the following:
+
+\begin{itemize}[leftmargin=*]
+    \item The system simulates disaster response. It does not connect to live emergency feeds, real-time weather APIs, or field sensor networks.
+
+    \item The geographic coverage is limited to major Indian cities. The highway graph in the A* solver contains approximately 30 cities with manually defined connections.
+
+    \item The machine learning model is trained on synthetic data generated programmatically. Real historical disaster datasets were not used for training.
+
+    \item User authentication is implemented with basic email/password matching. No token-based session management or OAuth integration is included.
+
+    \item The Google Gemini integration requires a valid API key. When the key is absent, the system falls back to a local heuristic generator, so all features remain functional without internet access.
+
+    \item Report generation supports CSV and PDF formats. No Microsoft Word or Excel export is implemented.
+\end{itemize}
+
+\section{Organization of Report}
+\label{sec:organization}
+
+The rest of this report is organized as follows:
+
+\textbf{Chapter~2: Literature Survey} reviews existing disaster management systems, identifies research gaps, and discusses the technologies used in this project.
+
+\textbf{Chapter~3: Methodology} describes the overall project workflow, the agent interaction model, the machine learning pipeline, and the communication architecture.
+
+\textbf{Chapter~4: System Analysis} covers functional and non-functional requirements, feasibility analysis, and the hardware/software specification.
+
+\textbf{Chapter~5: System Design} presents the overall architecture, database schema, module design, data flow diagrams, and API design.
+
+\textbf{Chapter~6: Implementation} provides a module-by-module walkthrough of the codebase, covering the frontend, backend, agents, message bus, ML pipeline, routing solver, and report generator.
+
+\textbf{Chapter~7: Testing} documents the testing strategy including unit tests, integration tests, API tests, and ML model evaluation.
+
+\textbf{Chapter~8: Results and Discussion} analyzes simulation outputs, dashboard screenshots, agent performance metrics, and the comparative results between smart and baseline strategies.
+
+\textbf{Chapter~9: Conclusion and Future Scope} summarizes the project achievements, acknowledges limitations, and proposes directions for future work.
+
+\section{Chapter Summary}
+\label{sec:ch1_summary}
+
+This chapter introduced the problem domain of disaster management in India, identified three specific problems---severity assessment, routing, and auditability---and stated the project's objectives. The system is a multi-agent simulation platform built with FastAPI, React, SQLite, scikit-learn, and the Google Gemini API, designed to demonstrate how coordinated software agents can improve emergency response decision-making.

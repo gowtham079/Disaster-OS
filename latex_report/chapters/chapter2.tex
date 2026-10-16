@@ -1,0 +1,138 @@
+\chapter{Literature Survey}
+\label{ch:literature_survey}
+
+\section{Existing Systems}
+\label{sec:existing_systems}
+
+Several systems have been developed over the years to support disaster response coordination. This section surveys the ones most relevant to the present work.
+
+\subsection{India Disaster Resource Network (IDRN)}
+
+The India Disaster Resource Network is a government-maintained database that catalogs available equipment, human resources, and supplies across districts. It functions primarily as a static inventory lookup tool. District-level officers can query it to find, say, how many inflatable boats are available in a neighboring district. However, IDRN does not perform any automated dispatch, severity classification, or route optimization. It is a registry, not a decision-support system.
+
+\subsection{Sahana Eden}
+
+Sahana Eden is an open-source disaster management platform originally developed after the 2004 Indian Ocean tsunami. It supports volunteer management, shelter registration, and inventory tracking. It has been deployed in several disaster scenarios globally and has a modular architecture. However, Sahana does not incorporate machine learning for severity assessment, does not perform route optimization, and does not use autonomous agents for coordination. Its primary strength is data collection and volunteer management, not automated decision-making.
+
+\subsection{FEMA Incident Command System (ICS)}
+
+The United States Federal Emergency Management Agency uses the Incident Command System as its standard organizational structure for emergency response. ICS defines roles, reporting chains, and communication protocols for field operations. While ICS provides a sound organizational framework, its implementation is paper-heavy and relies on human judgment at every level. It does not include computational tools for severity prediction, optimal routing, or outcome evaluation.
+
+\subsection{GDACS (Global Disaster Alerting Coordination System)}
+
+GDACS is a cooperation framework between the United Nations and the European Commission that provides near real-time alerts about natural disasters. It aggregates data from seismological networks, meteorological stations, and satellite imagery. GDACS excels at detection and alerting but does not extend to the coordination of rescue resources or the evaluation of response effectiveness.
+
+\subsection{Agent-Based Disaster Response in Academic Research}
+
+Several academic projects have explored multi-agent architectures for disaster response. Notable examples include RoboCup Rescue, which simulates urban search-and-rescue scenarios with autonomous agents, and various BDI (Belief-Desire-Intention) agent models proposed for coordinating emergency teams. These projects demonstrate the viability of the multi-agent approach but tend to remain at the algorithmic level without producing deployable web-based interfaces with real-time dashboards.
+
+\section{Research Gap}
+\label{sec:research_gap}
+
+After surveying the existing solutions, three clear gaps emerge:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{No integrated ML-based severity classification.} Systems like IDRN and Sahana rely on manually reported severity levels. None of the surveyed tools use a trained machine learning model to standardize severity assessment based on measurable environmental and demographic features.
+
+    \item \textbf{No graph-based routing with dynamic blockage support.} While commercial tools like Google Maps offer routing, they are not integrated into disaster dispatch pipelines. None of the surveyed disaster-specific systems implement an A* search with support for dynamically blocked edges---a feature needed when roads are destroyed during a disaster.
+
+    \item \textbf{No generative AI for decision explanation.} Existing systems either produce raw numerical outputs or rely on operators to interpret data. None integrate a large language model to generate human-readable justifications for dispatch decisions, which is valuable for audit trails and training purposes.
+\end{enumerate}
+
+\section{Limitations of Existing Systems}
+\label{sec:limitations_existing}
+
+Table~\ref{tab:existing_comparison} compares the surveyed systems across the features relevant to this project.
+
+\begin{table}[H]
+\centering
+\caption{Comparison of existing disaster management systems}
+\label{tab:existing_comparison}
+\begin{tabularx}{\textwidth}{|l|X|X|X|X|}
+\hline
+\textbf{Feature} & \textbf{IDRN} & \textbf{Sahana} & \textbf{GDACS} & \textbf{This Project} \\
+\hline
+ML Severity Classification & No & No & No & Yes (Random Forest) \\
+\hline
+Route Optimization & No & No & No & Yes (A* Search) \\
+\hline
+Multi-Agent Coordination & No & No & No & Yes (4 Agents + Bus) \\
+\hline
+AI Decision Explanations & No & No & No & Yes (Gemini API) \\
+\hline
+Real-Time Dashboard & No & Partial & Yes & Yes (WebSocket) \\
+\hline
+Report Export & No & CSV only & No & PDF + CSV \\
+\hline
+\end{tabularx}
+\end{table}
+
+\section{Proposed System}
+\label{sec:proposed_system}
+
+The proposed system addresses the identified gaps by combining four core capabilities into a single web application:
+
+\begin{enumerate}[leftmargin=*]
+    \item A \textbf{multi-agent pipeline} where four agents---Incident Detection, Resource Allocation, Rescue Coordination, and Evaluation---each handle one stage of the response workflow. These agents communicate through a centralized message bus rather than calling each other directly, which makes the system modular and each agent independently testable.
+
+    \item A \textbf{machine learning module} that trains a Random Forest classifier on synthetic disaster data. The features include disaster type, people affected, temperature, humidity, wind speed, rainfall, population density, and infrastructure score. The trained model produces severity predictions with confidence scores, which the Incident Detection Agent uses in place of fixed rules.
+
+    \item An \textbf{A* route optimization solver} that models highway connections between 30+ Indian cities. Each edge is weighted by Haversine distance, and the solver supports blocked edges to simulate road damage. The Resource Allocation Agent uses this solver to find the nearest available rescue team and estimate arrival time.
+
+    \item A \textbf{generative AI integration} with Google Gemini that produces structured explanations covering severity analysis, allocation rationale, evacuation recommendations, and concrete action items. When the API key is not available, a local rule-based fallback generates the same structured output using heuristic logic.
+\end{enumerate}
+
+\section{Advantages of the Proposed System}
+\label{sec:advantages_proposed}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Reproducibility.} Every simulation run is assigned a UUID. All state transitions, agent outputs, and inter-agent messages are persisted in SQLite. Running the same seed with the same strategy produces identical results.
+
+    \item \textbf{Strategy Comparison.} The system supports two dispatch strategies---``smart'' and ``baseline.'' The smart strategy uses ML predictions, higher team counts, and lower loss factors. Operators can compare outcomes across strategies to validate configuration changes.
+
+    \item \textbf{Offline Capability.} The Gemini AI integration degrades gracefully. Without an API key, the local fallback generates heuristic explanations. Without a trained ML model, the Incident Detection Agent uses rule-based severity logic. The entire pipeline runs without internet access.
+
+    \item \textbf{Export and Audit.} PDF reports compiled by ReportLab include simulation metadata, incident details, A* route information, and AI-generated justifications. CSV exports provide tabular data suitable for spreadsheet analysis.
+
+    \item \textbf{Visual Monitoring.} The React dashboard renders real-time state transitions via WebSocket, plots incidents on a Leaflet map with animated route overlays, and displays SVG-based charts for lives saved, efficiency trends, and strategy comparisons.
+\end{itemize}
+
+\section{Related Technologies}
+\label{sec:related_technologies}
+
+\subsection{FastAPI}
+
+FastAPI is a Python web framework built on top of Starlette for HTTP handling and Pydantic for data validation. It supports asynchronous request handling, automatic OpenAPI documentation, and type-checked request/response schemas. In this project, FastAPI serves as the backend API layer, exposing endpoints for simulation control, authentication, analytics, ML operations, and report export.
+
+\subsection{React}
+
+React is a JavaScript library for building component-based user interfaces. It uses a virtual DOM to efficiently update only the parts of the page that change. This project uses React 18 with functional components and hooks (\texttt{useState}, \texttt{useEffect}, \texttt{useMemo}) to build the single-page dashboard application.
+
+\subsection{SQLite}
+
+SQLite is a self-contained, serverless relational database engine. It stores data in a single file on disk and requires no separate server process. The project uses SQLite to persist users, simulation runs, incidents, agent logs, run metrics, inter-agent messages, system configuration, custom incidents, rescue teams, and ML model metadata across ten normalized tables.
+
+\subsection{scikit-learn}
+
+scikit-learn is a Python machine learning library that provides implementations of common algorithms including Random Forest, Support Vector Machines, and gradient boosting. This project uses \texttt{RandomForestClassifier} with \texttt{GridSearchCV} for hyperparameter tuning, \texttt{StandardScaler} for feature normalization, and \texttt{LabelEncoder} for target encoding.
+
+\subsection{Leaflet}
+
+Leaflet is a lightweight JavaScript library for interactive maps. The project uses \texttt{react-leaflet} to render a dark-themed map centered on India, with custom emoji markers for incidents, rescue teams, hospitals, shelters, and fire stations. Polyline overlays trace the A* computed routes between team locations and incident sites.
+
+\subsection{Google Gemini API}
+
+Gemini is Google's family of large language models. This project calls the Gemini 1.5 Flash endpoint through a REST API using \texttt{urllib.request}. The prompt instructs the model to return a JSON object with five fields: severity analysis, allocation analysis, evacuation recommendation, additional actions, and summary. The response is cached in memory to avoid redundant API calls.
+
+\subsection{WebSocket}
+
+WebSocket is a full-duplex communication protocol defined in RFC 6455. FastAPI's built-in WebSocket support is used to broadcast state transitions and inter-agent messages to the React frontend in real time. A \texttt{ConnectionManager} class maintains a list of active connections and handles disconnection cleanup.
+
+\subsection{ReportLab}
+
+ReportLab is a Python library for generating PDF documents programmatically. The project uses it to compile styled simulation reports with custom typography, colored tables, incident details, A* route metrics, and AI-generated explanations. Reports are served as downloadable attachments through a FastAPI endpoint.
+
+\section{Chapter Summary}
+\label{sec:ch2_summary}
+
+This chapter surveyed existing disaster management tools and academic multi-agent research, identified three specific gaps that none of the existing systems address simultaneously, and introduced the technologies used in this project. The proposed system fills these gaps by combining ML-based severity classification, A* route optimization, generative AI explanations, and a real-time web dashboard into a single coordinated platform.

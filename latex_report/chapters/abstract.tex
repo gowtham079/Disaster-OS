@@ -1,0 +1,15 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Disaster response in India frequently suffers from delayed severity assessments, uncoordinated team dispatches, and a lack of reproducible audit trails. When a cyclone hits Odisha or floods sweep through Kerala, command centers rely on phone calls, spreadsheets, and individual judgment---methods that scale poorly under pressure.
+
+This project presents a web-based multi-agent simulation system designed to address these operational shortcomings. Four autonomous software agents---Incident Detection, Resource Allocation, Rescue Coordination, and Evaluation---interact through a centralized, priority-queued message bus. The Incident Detection Agent classifies incoming disaster reports using a Random Forest model trained on synthetic geospatial and meteorological data; when no trained model is available, the agent falls back to hand-coded rules so the pipeline never stalls. The Resource Allocation Agent runs an A* shortest-path search over a highway graph of 30+ Indian cities to find the nearest available rescue team and compute an estimated time of arrival. The Rescue Coordination Agent models rescue capacity and loss factors, while the Evaluation Agent computes outcome metrics and queries the Google Gemini API to generate plain-language tactical explanations for each dispatch decision.
+
+The backend is built on FastAPI with an SQLite database that records every state transition, agent log, and inter-agent message for a given simulation run. A React frontend provides a dark-themed dashboard with real-time WebSocket updates, an interactive Leaflet map with animated route overlays, SVG-based analytics charts, and downloadable CSV and PDF reports compiled via ReportLab.
+
+Running a typical simulation with 150 incidents, the smart strategy consistently rescues a higher percentage of affected citizens compared to a baseline allocation and completes dispatches with shorter average response times. The ML severity classifier achieves approximately 86\% accuracy on held-out test splits with weighted F1 scores above 0.85.
+
+The system demonstrates that a modular agent architecture combined with classical AI search algorithms and modern language model integration can serve as a practical decision-support prototype for disaster operations centers, emergency training simulators, and urban resilience planning exercises.
+
+\vspace{0.5cm}
+\noindent\textbf{Keywords:} Multi-Agent System, Disaster Management, Random Forest, A* Algorithm, FastAPI, React, WebSocket, Decision Support, Machine Learning, Route Optimization

@@ -1,0 +1,117 @@
+# =============================================================================
+# Disaster OS — repository ignore rules (monorepo: backend + frontend)
+# =============================================================================
+
+# Environment & secrets (commit .env.example only — placeholders, no real keys)
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+*.env
+!*.env.example
+
+# Common credential / key files (never commit real material)
+credentials.json
+*credentials*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python — virtual environments, caches, compiled artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node & frontend build output
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+build/
+dist/
+dist-ssr/
+*.local
+.parcel-cache/
+.vite/
+.next/
+.nuxt/
+.output/
+.turbo/
+
+# SQLite databases and journal files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Backend generated reports, evidence, and local scratch runs
+Multi-Agent-System/scratch/
+
+# Logs and temporary files
+*.log
+logs/
+log/
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+*.bak
+*.swp
+*.swo
+*~
+
+# Testing, coverage, and tool caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# OS / local IDE (do not share personal editor state)
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.cursor/
