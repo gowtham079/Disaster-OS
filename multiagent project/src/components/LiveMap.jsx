@@ -9,7 +9,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
+import { API_BASE, getWebSocketUrl, getAuthHeaders } from '../config';
 const DEFAULT_CENTER = [20.5937, 78.9629]; // Neutral India centroid map viewport
 const SEVERITY_COLORS = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' };
 
@@ -285,11 +285,12 @@ const LiveMap = memo(function LiveMap({ incidents = [], runId = 'demo', activeTa
   const fetchEntities = useCallback(async () => {
     if (!runId) return;
     try {
+      const authOpts = { headers: getAuthHeaders(), credentials: 'include' };
       const [resResp, facResp, zoneResp, blockResp, corrResp] = await Promise.all([
-        fetch(`${API_BASE}/api/run/${runId}/resources`),
-        fetch(`${API_BASE}/api/run/${runId}/facilities`),
-        fetch(`${API_BASE}/api/run/${runId}/zones`),
-        fetch(`${API_BASE}/api/run/${runId}/blocked-roads`),
+        fetch(`${API_BASE}/api/run/${runId}/resources`, authOpts),
+        fetch(`${API_BASE}/api/run/${runId}/facilities`, authOpts),
+        fetch(`${API_BASE}/api/run/${runId}/zones`, authOpts),
+        fetch(`${API_BASE}/api/run/${runId}/blocked-roads`, authOpts),
         fetch(`${API_BASE}/api/corridors/active`),
       ]);
 
@@ -357,7 +358,7 @@ const LiveMap = memo(function LiveMap({ incidents = [], runId = 'demo', activeTa
 
   // WebSocket Live Updates Handler
   useEffect(() => {
-    const wsUrl = `${API_BASE.replace('http', 'ws')}/ws/simulation`;
+    const wsUrl = getWebSocketUrl('/ws/simulation');
     let ws;
     try {
       ws = new WebSocket(wsUrl);

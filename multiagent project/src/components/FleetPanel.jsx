@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import AnimatedCounter from './AnimatedCounter';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
+import { API_BASE } from '../config';
 
 function ProvenanceBadge({ type }) {
   const map = {
@@ -33,6 +33,7 @@ const FleetPanel = memo(function FleetPanel({ resources, fleet, runId, onRefresh
       const token = localStorage.getItem('disaster_os_token') || sessionStorage.getItem('disaster_os_token');
       fetch(`${API_BASE}/api/run/${runId}/resources`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
       })
         .then((res) => res.json())
         .then((data) => {

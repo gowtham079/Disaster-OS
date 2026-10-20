@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
+import { API_BASE } from '../config';
 
 export default function LoginPage({ onLoginSuccess, onNavigateLanding }) {
   const [email, setEmail] = useState('operator@disaster.local');

@@ -12,8 +12,7 @@ import FleetPanel from './components/FleetPanel';
 import IntelligencePanel from './components/IntelligencePanel';
 import ResourcePanel from './components/ResourcePanel';
 import AnalyticsPanel from './components/AnalyticsPanel';
-
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
+import { API_BASE, getWebSocketUrl } from './config';
 
 /* SVG ICONS */
 const Icons = {
@@ -269,7 +268,7 @@ export default function App() {
       try { wsRef.current.close(); } catch {}
     }
 
-    const wsUrl = API_BASE.replace(/^http/, 'ws') + '/ws/simulation';
+    const wsUrl = getWebSocketUrl('/ws/simulation');
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

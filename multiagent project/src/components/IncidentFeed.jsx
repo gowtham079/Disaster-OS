@@ -1,6 +1,6 @@
 import React, { memo, useState, useEffect, useCallback } from 'react';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
+import { API_BASE } from '../config';
 const VALID_STATUSES = ['NEW', 'ASSESSED', 'RESPONDING', 'CONTAINED', 'RESOLVED'];
 const SEV_ICONS = { high: '🔴', medium: '🟡', low: '🟢' };
 const SEV_ORDER = { high: 0, medium: 1, low: 2 };
