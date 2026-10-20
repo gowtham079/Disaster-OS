@@ -152,14 +152,6 @@ def init_db() -> None:
         """
     )
 
-    # Performance B-Tree Indexes for sub-millisecond queries
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_incidents_run_id ON incidents(run_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_logs_run_agent ON agent_logs(run_id, agent_name);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sim_resources_run_id ON simulation_resources(run_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_facilities_run_id ON facilities(run_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_zones_run_id ON disaster_zones(run_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_blocked_roads_run_id ON blocked_roads(run_id);")
-
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS incidents (
@@ -631,6 +623,14 @@ def init_db() -> None:
         )
         """
     )
+
+    # Performance B-Tree Indexes for sub-millisecond queries
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_incidents_run_id ON incidents(run_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_logs_run_agent ON agent_logs(run_id, agent_name);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sim_resources_run_id ON simulation_resources(run_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_facilities_run_id ON facilities(run_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_zones_run_id ON disaster_zones(run_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_blocked_roads_run_id ON blocked_roads(run_id);")
 
     # Seed default rescue teams
     default_teams = [
